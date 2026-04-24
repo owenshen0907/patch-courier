@@ -53,6 +53,24 @@ actor InMemoryEventStore: EventStore {
     }
 }
 
+actor InMemoryMailboxSyncStore: MailboxSyncStore {
+    private var cursors: [String: MailroomMailboxSyncCursor] = [:]
+
+    func save(syncCursor: MailroomMailboxSyncCursor) async throws {
+        cursors[syncCursor.accountID] = syncCursor
+    }
+
+    func syncCursor(accountID: String) async throws -> MailroomMailboxSyncCursor? {
+        cursors[accountID]
+    }
+
+    func allSyncCursors() async throws -> [MailroomMailboxSyncCursor] {
+        cursors.values.sorted { lhs, rhs in
+            lhs.accountID.localizedCaseInsensitiveCompare(rhs.accountID) == .orderedAscending
+        }
+    }
+}
+
 actor InMemoryMailboxMessageStore: MailboxMessageStore {
     private var messagesByID: [String: MailroomMailboxMessageRecord] = [:]
 
@@ -72,6 +90,27 @@ actor InMemoryMailboxMessageStore: MailboxMessageStore {
                 return lhs.updatedAt > rhs.updatedAt
             }
         return Array(filtered.prefix(max(limit, 0)))
+    }
+}
+
+actor InMemoryTurnStore: TurnStore {
+    private var turns: [String: MailroomTurnRecord] = [:]
+
+    func save(turn: MailroomTurnRecord) async throws {
+        turns[turn.id] = turn
+    }
+
+    func turn(id: String) async throws -> MailroomTurnRecord? {
+        turns[id]
+    }
+
+    func allTurns() async throws -> [MailroomTurnRecord] {
+        turns.values.sorted { lhs, rhs in
+            if lhs.updatedAt != rhs.updatedAt {
+                return lhs.updatedAt > rhs.updatedAt
+            }
+            return lhs.id.localizedCaseInsensitiveCompare(rhs.id) == .orderedAscending
+        }
     }
 }
 

@@ -299,6 +299,7 @@ struct MailroomDaemonTurnSummary: Identifiable, Codable, Hashable, Sendable {
     var status: String
     var promptPreview: String?
     var lastNotifiedState: String?
+    var lastNotifiedApprovalID: String?
     var lastNotificationMessageID: String?
     var startedAt: Date
     var completedAt: Date?

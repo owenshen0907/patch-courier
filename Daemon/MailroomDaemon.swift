@@ -407,6 +407,7 @@ actor MailroomDaemon {
                 status: turn.status.rawValue,
                 promptPreview: turn.promptPreview,
                 lastNotifiedState: turn.lastNotifiedState?.rawValue,
+                lastNotifiedApprovalID: turn.lastNotifiedApprovalID,
                 lastNotificationMessageID: turn.lastNotificationMessageID,
                 startedAt: turn.startedAt,
                 completedAt: turn.completedAt,
@@ -1030,6 +1031,7 @@ actor MailroomDaemon {
             status: .active,
             promptPreview: String(trimmedPrompt.prefix(240)),
             lastNotifiedState: nil,
+            lastNotifiedApprovalID: nil,
             lastNotificationMessageID: nil,
             startedAt: now,
             completedAt: nil,
@@ -1374,11 +1376,17 @@ actor MailroomDaemon {
         )
     }
 
-    func markTurnNotification(turnID: String, state: MailroomTurnOutcomeState, messageID: String?) async throws {
+    func markTurnNotification(
+        turnID: String,
+        state: MailroomTurnOutcomeState,
+        messageID: String?,
+        approvalID: String? = nil
+    ) async throws {
         guard var turn = try await turnStore.turn(id: turnID) else {
             return
         }
         turn.lastNotifiedState = state
+        turn.lastNotifiedApprovalID = approvalID
         if let messageID {
             turn.lastNotificationMessageID = messageID
         }
@@ -1641,7 +1649,7 @@ actor MailroomDaemon {
         return nil
     }
 
-    private func pendingApproval(codexThreadID: String, turnID: String) async throws -> MailroomApprovalRequest? {
+    func pendingApproval(codexThreadID: String, turnID: String) async throws -> MailroomApprovalRequest? {
         try await approvalStore
             .allApprovals()
             .filter { $0.codexThreadID == codexThreadID && $0.codexTurnID == turnID && $0.status == .pending }

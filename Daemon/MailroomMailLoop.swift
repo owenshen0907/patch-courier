@@ -270,19 +270,50 @@ extension MailroomDaemon {
     }
 
     func recoverPendingMailTurns() async throws {
-        let candidateTurns = try await turnStore
-            .allTurns()
-            .filter { turn in
-                turn.origin.isMailDriven && (
-                    turn.status == .active ||
-                    turn.status.notificationOutcomeState != turn.lastNotifiedState
-                )
+        var candidateTurns: [MailroomTurnRecord] = []
+        for turn in try await turnStore.allTurns() {
+            if try await shouldRecoverMailTurn(turn) {
+                candidateTurns.append(turn)
             }
-            .sorted { $0.updatedAt < $1.updatedAt }
+        }
+        candidateTurns.sort { $0.updatedAt < $1.updatedAt }
 
         for turn in candidateTurns {
             try await recoverPendingMailTurn(turn)
         }
+    }
+
+    func shouldRecoverMailTurn(_ turn: MailroomTurnRecord) async throws -> Bool {
+        guard turn.origin.isMailDriven else {
+            return false
+        }
+        if turn.status == .active {
+            return true
+        }
+        guard let notificationState = turn.status.notificationOutcomeState else {
+            return false
+        }
+        guard turn.lastNotifiedState == notificationState else {
+            return true
+        }
+        guard notificationState.requiresApprovalNotificationIdentity else {
+            return false
+        }
+        guard let approval = try await pendingApproval(codexThreadID: turn.codexThreadID, turnID: turn.id) else {
+            return false
+        }
+        return !turn.hasRecordedNotification(state: notificationState, approvalID: approval.id)
+    }
+
+    func pendingApprovalAlreadyNotified(_ approval: MailroomApprovalRequest) async throws -> Bool {
+        guard let turn = try await turnStore.turn(id: approval.codexTurnID) else {
+            return false
+        }
+        return turn.hasRecordedNotification(state: notificationState(for: approval), approvalID: approval.id)
+    }
+
+    func notificationState(for approval: MailroomApprovalRequest) -> MailroomTurnOutcomeState {
+        approval.kind == .userInput ? .waitingOnUserInput : .waitingOnApproval
     }
 
     private func loadMailboxAccounts(filteredTo selectedIDs: Set<String>?) async throws -> [MailboxAccount] {
@@ -418,7 +449,7 @@ extension MailroomDaemon {
         guard turn.origin.isMailDriven else {
             return
         }
-        guard turn.lastNotifiedState != outcome.state else {
+        guard !turn.hasRecordedNotification(state: outcome.state, approvalID: outcome.approvalID) else {
             return
         }
 
@@ -915,6 +946,24 @@ extension MailroomDaemon {
 
             let pendingApprovals = try await pendingApprovals(for: thread)
             if let approval = pendingApprovals.first {
+                let notifiedState = notificationState(for: approval)
+                if try await pendingApprovalAlreadyNotified(approval) {
+                    try await updateThreadMailState(token: thread.id, lastInboundMessageID: message.messageID, lastOutboundMessageID: nil)
+                    return MailroomMailboxMessageResult(
+                        uid: message.uid,
+                        messageID: message.messageID,
+                        sender: normalizedSender,
+                        subject: message.subject,
+                        action: .ignored,
+                        threadToken: thread.id,
+                        outboundMessageID: nil,
+                        note: LT(
+                            "Approval request is already pending and has already been sent.",
+                            "审批请求仍在等待中，并且已经发送过通知。",
+                            "承認依頼はまだ保留中で、通知はすでに送信済みです。"
+                        )
+                    )
+                }
                 let outboundMessageID = try await sendApprovalEnvelope(
                     approval,
                     account: account,
@@ -929,8 +978,12 @@ extension MailroomDaemon {
                         "このスレッドは構造化された承認返信を待っている。以下のフィールド形式で回答してください。"
                     )
                 )
-                let notifiedState: MailroomTurnOutcomeState = approval.kind == .userInput ? .waitingOnUserInput : .waitingOnApproval
-                try await markTurnNotification(turnID: approval.codexTurnID, state: notifiedState, messageID: outboundMessageID)
+                try await markTurnNotification(
+                    turnID: approval.codexTurnID,
+                    state: notifiedState,
+                    messageID: outboundMessageID,
+                    approvalID: approval.id
+                )
                 try await updateThreadMailState(token: thread.id, lastInboundMessageID: message.messageID, lastOutboundMessageID: outboundMessageID)
                 return MailroomMailboxMessageResult(
                     uid: message.uid,
@@ -1904,7 +1957,12 @@ extension MailroomDaemon {
                 replyTo: replyTo,
                 prefixNote: nil
             )
-            try await markTurnNotification(turnID: outcome.turnID, state: outcome.state, messageID: outboundMessageID)
+            try await markTurnNotification(
+                turnID: outcome.turnID,
+                state: outcome.state,
+                messageID: outboundMessageID,
+                approvalID: approval.id
+            )
             return outboundMessageID
 
         case .completed:

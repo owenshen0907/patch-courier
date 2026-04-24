@@ -42,6 +42,15 @@ enum MailroomTurnOutcomeState: String, Codable, CaseIterable, Sendable {
     case waitingOnUserInput
     case failed
     case systemError
+
+    var requiresApprovalNotificationIdentity: Bool {
+        switch self {
+        case .waitingOnApproval, .waitingOnUserInput:
+            return true
+        case .completed, .failed, .systemError:
+            return false
+        }
+    }
 }
 
 enum MailroomTurnOrigin: String, Codable, CaseIterable, Sendable {
@@ -185,10 +194,26 @@ struct MailroomTurnRecord: Identifiable, Codable, Hashable, Sendable {
     var status: MailroomTurnStatus
     var promptPreview: String?
     var lastNotifiedState: MailroomTurnOutcomeState?
+    var lastNotifiedApprovalID: String?
     var lastNotificationMessageID: String?
     var startedAt: Date
     var completedAt: Date?
     var updatedAt: Date
+
+    func hasRecordedNotification(state: MailroomTurnOutcomeState, approvalID: String?) -> Bool {
+        guard lastNotifiedState == state else {
+            return false
+        }
+        guard state.requiresApprovalNotificationIdentity else {
+            return true
+        }
+        guard let lastNotifiedApprovalID else {
+            // Older databases only stored the state. Treat same-state waiting turns as notified
+            // to avoid a one-time duplicate approval email after upgrade.
+            return true
+        }
+        return lastNotifiedApprovalID == approvalID
+    }
 }
 
 struct MailroomTurnOutcome: Codable, Hashable, Sendable {

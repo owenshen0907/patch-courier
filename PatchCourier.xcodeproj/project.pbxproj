@@ -67,6 +67,7 @@
 		C7B2EF3209AE4AB74A627A2C /* MailroomMailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */; };
 		C947E1AA6A598268CF9CBB0D /* ApprovalMailCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */; };
 		CEA72FABD1103C729F85C713 /* SQLiteMailroomLocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E89FB395CD4C78B6ECDE821 /* SQLiteMailroomLocalStore.swift */; };
+		D02BB94F59585A8E766D3C6B /* MailroomTurnNotificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01DBA3270A47F0F34A43AB4A /* MailroomTurnNotificationTests.swift */; };
 		D0443C513D4B8B1C1EB866E6 /* MailroomPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */; };
 		D31709BF60EB90168E0E76DB /* CodexHomeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3883060977CCE37ECA0E8327 /* CodexHomeBootstrap.swift */; };
 		D338FE288FB849D9525211B3 /* SenderPolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */; };
@@ -94,6 +95,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01DBA3270A47F0F34A43AB4A /* MailroomTurnNotificationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomTurnNotificationTests.swift; sourceTree = "<group>"; };
 		028A57A56468781665BAFC01 /* KeychainSecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecretStore.swift; sourceTree = "<group>"; };
 		092F98005C1ED92F4BC22D0D /* MailroomDaemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDaemon.swift; sourceTree = "<group>"; };
 		221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomPolicyModels.swift; sourceTree = "<group>"; };
@@ -261,6 +263,7 @@
 			children = (
 				B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */,
 				D8992D4664E47CDA553D28E9 /* MailroomMailParserTests.swift */,
+				01DBA3270A47F0F34A43AB4A /* MailroomTurnNotificationTests.swift */,
 			);
 			path = MailroomDaemonTests;
 			sourceTree = "<group>";
@@ -477,6 +480,7 @@
 				96E00559ECA8C934CD6BDFB5 /* MailroomModels.swift in Sources */,
 				3C44B622DFB192B5AA329685 /* MailroomPaths.swift in Sources */,
 				781F52AEA97987BA7F99ECC1 /* MailroomPolicyModels.swift in Sources */,
+				D02BB94F59585A8E766D3C6B /* MailroomTurnNotificationTests.swift in Sources */,
 				96CE6889E8FC561E5419C727 /* SQLiteMailroomStore.swift in Sources */,
 				D338FE288FB849D9525211B3 /* SenderPolicyStore.swift in Sources */,
 			);

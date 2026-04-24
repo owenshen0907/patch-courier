@@ -627,11 +627,12 @@ extension SQLiteMailroomStore: TurnStore {
                 status,
                 prompt_preview,
                 last_notified_state,
+                last_notified_approval_id,
                 last_notification_message_id,
                 started_at,
                 completed_at,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 mail_thread_token = excluded.mail_thread_token,
                 codex_thread_id = excluded.codex_thread_id,
@@ -639,6 +640,7 @@ extension SQLiteMailroomStore: TurnStore {
                 status = excluded.status,
                 prompt_preview = excluded.prompt_preview,
                 last_notified_state = excluded.last_notified_state,
+                last_notified_approval_id = excluded.last_notified_approval_id,
                 last_notification_message_id = excluded.last_notification_message_id,
                 started_at = excluded.started_at,
                 completed_at = excluded.completed_at,
@@ -655,10 +657,11 @@ extension SQLiteMailroomStore: TurnStore {
             bind(turn.status.rawValue, at: 5, in: statement)
             bind(turn.promptPreview, at: 6, in: statement)
             bind(turn.lastNotifiedState?.rawValue, at: 7, in: statement)
-            bind(turn.lastNotificationMessageID, at: 8, in: statement)
-            bind(turn.startedAt.timeIntervalSince1970, at: 9, in: statement)
-            bind(turn.completedAt?.timeIntervalSince1970, at: 10, in: statement)
-            bind(turn.updatedAt.timeIntervalSince1970, at: 11, in: statement)
+            bind(turn.lastNotifiedApprovalID, at: 8, in: statement)
+            bind(turn.lastNotificationMessageID, at: 9, in: statement)
+            bind(turn.startedAt.timeIntervalSince1970, at: 10, in: statement)
+            bind(turn.completedAt?.timeIntervalSince1970, at: 11, in: statement)
+            bind(turn.updatedAt.timeIntervalSince1970, at: 12, in: statement)
 
             guard sqlite3_step(statement) == SQLITE_DONE else {
                 throw SQLiteMailroomStoreError.statementFailed(message(from: database))
@@ -677,6 +680,7 @@ extension SQLiteMailroomStore: TurnStore {
                 status,
                 prompt_preview,
                 last_notified_state,
+                last_notified_approval_id,
                 last_notification_message_id,
                 started_at,
                 completed_at,
@@ -708,6 +712,7 @@ extension SQLiteMailroomStore: TurnStore {
                 status,
                 prompt_preview,
                 last_notified_state,
+                last_notified_approval_id,
                 last_notification_message_id,
                 started_at,
                 completed_at,
@@ -1191,12 +1196,19 @@ private extension SQLiteMailroomStore {
                     status TEXT NOT NULL,
                     prompt_preview TEXT,
                     last_notified_state TEXT,
+                    last_notified_approval_id TEXT,
                     last_notification_message_id TEXT,
                     started_at REAL NOT NULL,
                     completed_at REAL,
                     updated_at REAL NOT NULL
                 );
                 """,
+                in: database
+            )
+            try ensureColumn(
+                table: "codex_turns",
+                named: "last_notified_approval_id",
+                definition: "TEXT",
                 in: database
             )
             try execute("CREATE INDEX IF NOT EXISTS idx_mail_threads_updated_at ON mail_threads(updated_at DESC);", in: database)
@@ -1396,10 +1408,11 @@ private extension SQLiteMailroomStore {
             status: MailroomTurnStatus(rawValue: string(at: 4, from: statement) ?? "") ?? .active,
             promptPreview: string(at: 5, from: statement),
             lastNotifiedState: string(at: 6, from: statement).flatMap(MailroomTurnOutcomeState.init(rawValue:)),
-            lastNotificationMessageID: string(at: 7, from: statement),
-            startedAt: date(at: 8, from: statement) ?? Date(),
-            completedAt: date(at: 9, from: statement),
-            updatedAt: date(at: 10, from: statement) ?? Date()
+            lastNotifiedApprovalID: string(at: 7, from: statement),
+            lastNotificationMessageID: string(at: 8, from: statement),
+            startedAt: date(at: 9, from: statement) ?? Date(),
+            completedAt: date(at: 10, from: statement),
+            updatedAt: date(at: 11, from: statement) ?? Date()
         )
     }
 
