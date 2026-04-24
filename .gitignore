@@ -8,3 +8,5 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 *.xcuserstate
 .env.local
+
+.local/
