@@ -1,0 +1,95 @@
+name: PatchCourier
+options:
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+targets:
+  PatchCourierMac:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    dependencies:
+      - target: MailroomDaemon
+    sources:
+      - path: Shared
+      - path: Targets/Mac
+    resources:
+      - path: Targets/Mac/Assets.xcassets
+    postBuildScripts:
+      - name: Embed Mailroom Daemon
+        script: |
+          set -euo pipefail
+          helpers_dir="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers"
+          mkdir -p "${helpers_dir}"
+          cp "${BUILT_PRODUCTS_DIR}/mailroomd" "${helpers_dir}/mailroomd"
+          chmod +x "${helpers_dir}/mailroomd"
+        outputFiles:
+          - "$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/mailroomd"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.patchcourier.mac
+        PRODUCT_NAME: Patch Courier
+        MARKETING_VERSION: 1.0.0
+        CURRENT_PROJECT_VERSION: 1
+    info:
+      path: Targets/Mac/Info.plist
+      properties:
+        CFBundleDisplayName: Patch Courier
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        AppLastUpdatedAt: "2026-04-19 06:49 UTC"
+        LSApplicationCategoryType: public.app-category.productivity
+
+  MailroomDaemon:
+    type: tool
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Runtime
+      - path: Daemon
+      - path: Shared/AppLocalization.swift
+      - path: Shared/Mailroom/MailroomModels.swift
+      - path: Shared/Mailroom/MailroomPaths.swift
+      - path: Shared/Mailroom/MailroomPolicyModels.swift
+      - path: Shared/Mailroom/MailRuntimeModels.swift
+      - path: Shared/Mailroom/MailroomDaemonControlModels.swift
+      - path: Shared/Mailroom/MailboxAccountStore.swift
+      - path: Shared/Mailroom/SenderPolicyStore.swift
+      - path: Shared/Mailroom/KeychainSecretStore.swift
+      - path: Shared/Mailroom/MailTransportClient.swift
+      - path: Shared/Mailroom/MailroomMailParser.swift
+    settings:
+      base:
+        PRODUCT_NAME: mailroomd
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+    scheme:
+      testTargets:
+        - MailroomDaemonTests
+
+  MailroomDaemonTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Runtime
+      - path: Daemon
+        excludes:
+          - main.swift
+      - path: Shared/AppLocalization.swift
+      - path: Shared/Mailroom/MailroomModels.swift
+      - path: Shared/Mailroom/MailroomPaths.swift
+      - path: Shared/Mailroom/MailroomPolicyModels.swift
+      - path: Shared/Mailroom/MailRuntimeModels.swift
+      - path: Shared/Mailroom/MailroomDaemonControlModels.swift
+      - path: Shared/Mailroom/MailboxAccountStore.swift
+      - path: Shared/Mailroom/SenderPolicyStore.swift
+      - path: Shared/Mailroom/KeychainSecretStore.swift
+      - path: Shared/Mailroom/MailTransportClient.swift
+      - path: Shared/Mailroom/MailroomMailParser.swift
+      - path: Tests/MailroomDaemonTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.patchcourier.daemon-tests
+        GENERATE_INFOPLIST_FILE: YES

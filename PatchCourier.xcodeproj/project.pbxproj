@@ -1,0 +1,759 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03FD9E07E44F311A72FE1196 /* SenderPolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */; };
+		04F371EDDE820D32EE120F69 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5455B0FB2AFD3833B2064678 /* Assets.xcassets */; };
+		0C454F586D0B786903935698 /* InMemoryStores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C08FE67B95012C840DCB7C /* InMemoryStores.swift */; };
+		0C8EF7B679E3B8B4C70948EA /* CodexHomeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3883060977CCE37ECA0E8327 /* CodexHomeBootstrap.swift */; };
+		0D4BCF3C5F87FD4A4928E250 /* InMemoryStores.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C08FE67B95012C840DCB7C /* InMemoryStores.swift */; };
+		0E464F8F5CDBCAD8C84F93F4 /* KeychainSecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028A57A56468781665BAFC01 /* KeychainSecretStore.swift */; };
+		1B1B18DD970BDE17F3CDCA5E /* MailboxAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */; };
+		1BD86B32289FBA014422664D /* MailTransportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */; };
+		224941E088831E1CBE5DD821 /* MailRuntimeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F45819A1FD53D75404686A /* MailRuntimeModels.swift */; };
+		29F21F4ABF87177929E2F58D /* MailRuntimeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F45819A1FD53D75404686A /* MailRuntimeModels.swift */; };
+		2F4BC679B071C408D6010510 /* MailPreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66641957B55753657921FCEE /* MailPreviewFixtures.swift */; };
+		32629B6D207B6860D0E95A10 /* MailroomDaemon in Resources */ = {isa = PBXBuildFile; fileRef = C871027B1F00A41EE77AABF7 /* MailroomDaemon */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		32F53F445DDBE3ABBB08A15F /* MailroomPolicyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */; };
+		33416C08DE14C8FFE1C60811 /* MailTransportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */; };
+		34188669DE60C4018BB17B11 /* MailroomSkillInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3710D3F79290AB41A9664AE6 /* MailroomSkillInstaller.swift */; };
+		37BFA3B7BC00A6B919ED90FB /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */; };
+		3C44B622DFB192B5AA329685 /* MailroomPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */; };
+		406B64392D6EF79FE707C5BF /* ApprovalMailCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA019383CFC56A8E5EE8C6E7 /* ApprovalMailCodec.swift */; };
+		4330B60E3B0ED4B3ED14146B /* MailRuntimeStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 658B45448A3E4232801EB890 /* MailRuntimeStateStore.swift */; };
+		49AC0FE0470D256E653774A2 /* MailboxAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */; };
+		4AF6EB9DC630A2F25DC185F4 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */; };
+		4D9632DCEB62D6D0EA6057AE /* KeychainSecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028A57A56468781665BAFC01 /* KeychainSecretStore.swift */; };
+		4E5298AF0BAA806272BB1204 /* MailroomNotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F5176A1BD279B0C6D7580C /* MailroomNotificationManager.swift */; };
+		52DF4B1A6A6F0CABF801F32D /* AppCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D571FAF258679490D23D345A /* AppCore.swift */; };
+		535F3AE161C0F21D8A73DE8A /* MailroomDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */; };
+		55CFA241DD8C063E15FA265F /* MailroomDaemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092F98005C1ED92F4BC22D0D /* MailroomDaemon.swift */; };
+		5E3645B24C624C619EDFE9A6 /* MailroomDaemonSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DD858ADF038EBFBCC8EABE3 /* MailroomDaemonSupervisor.swift */; };
+		67F643006A2E69939518276E /* KeychainSecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028A57A56468781665BAFC01 /* KeychainSecretStore.swift */; };
+		690702F90E88B52CCC7BB7CE /* MailroomDaemonControlModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30465FE8B1AFC2EB0C926D7 /* MailroomDaemonControlModels.swift */; };
+		72E326019C2CD0F0E7D0FD2D /* MailRuntimeModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38F45819A1FD53D75404686A /* MailRuntimeModels.swift */; };
+		781F52AEA97987BA7F99ECC1 /* MailroomPolicyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */; };
+		78917F822600512AFF485BF1 /* MailroomDaemonControlModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30465FE8B1AFC2EB0C926D7 /* MailroomDaemonControlModels.swift */; };
+		7B27DD27E9DFB763BB2DE94A /* MailroomPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */; };
+		7C988E8514F271FE6F8015F2 /* MailroomDaemonControlModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30465FE8B1AFC2EB0C926D7 /* MailroomDaemonControlModels.swift */; };
+		7FEC9FC68D9D6B1180F1A444 /* MailboxAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */; };
+		83784026C37D4CE341B02815 /* MailroomMailLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75B483EE7D731106C52BB529 /* MailroomMailLoop.swift */; };
+		842C2A016BC1A53A61A85100 /* MailroomMailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */; };
+		8ACBD6F57E1E9E0E3D685A34 /* SQLiteMailroomStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C18B93C4D8B820444DAB2A /* SQLiteMailroomStore.swift */; };
+		8AEEBB03BB0672740ADE78F3 /* CodexAppServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB89F82EE9654FCB08AC3EF9 /* CodexAppServer.swift */; };
+		8C84788CBC92892FB9CA9440 /* MailroomControlServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77C5B1C041CF5AE3CE9BE9C7 /* MailroomControlServer.swift */; };
+		8D025E7D8AAA0DE5908B1F00 /* MailPolicyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C932C70D3E79DFBF16ED54A2 /* MailPolicyEngine.swift */; };
+		8FA6B477B4858EB095A8070B /* CodexRequestModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD16657F4060AF8FDA1FD5C /* CodexRequestModels.swift */; };
+		9245014DADE435171CB37996 /* MailroomMailParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8992D4664E47CDA553D28E9 /* MailroomMailParserTests.swift */; };
+		95AA25C3BD0ED1E90DEDA310 /* MailroomControlServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77C5B1C041CF5AE3CE9BE9C7 /* MailroomControlServer.swift */; };
+		96CE6889E8FC561E5419C727 /* SQLiteMailroomStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C18B93C4D8B820444DAB2A /* SQLiteMailroomStore.swift */; };
+		96E00559ECA8C934CD6BDFB5 /* MailroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F0FD24167FBD4724B47194 /* MailroomModels.swift */; };
+		97C0ECD628A354F0D51DFF0E /* MailTransportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */; };
+		99CCE41F36DFF68502480815 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */; };
+		A190C6D1A7A95D2E2EA67F6B /* MailroomDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */; };
+		A26407F399043FDCB73ECFA0 /* PatchCourierMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798256FCEC32368CB30804D5 /* PatchCourierMacApp.swift */; };
+		A280F08FC184E6EBA804550A /* SenderPolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */; };
+		A2CB8FE38EEBE76F855561D4 /* ApprovalMailCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA019383CFC56A8E5EE8C6E7 /* ApprovalMailCodec.swift */; };
+		B2B51BE99F8F4AFB4C3D7223 /* MailroomPolicyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */; };
+		BC41AD0E401D43EAB067A62B /* CodexBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C661A105AAF73A582A51047 /* CodexBridge.swift */; };
+		BC5F10F2B6A6019268ADFAA6 /* MailroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F0FD24167FBD4724B47194 /* MailroomModels.swift */; };
+		C3BC0E93D8A1A90994846EDE /* MailroomMailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */; };
+		C3C82EB536F1AD3BF29957F4 /* MailroomDaemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092F98005C1ED92F4BC22D0D /* MailroomDaemon.swift */; };
+		C7B2EF3209AE4AB74A627A2C /* MailroomMailParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */; };
+		C947E1AA6A598268CF9CBB0D /* ApprovalMailCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */; };
+		CEA72FABD1103C729F85C713 /* SQLiteMailroomLocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E89FB395CD4C78B6ECDE821 /* SQLiteMailroomLocalStore.swift */; };
+		D0443C513D4B8B1C1EB866E6 /* MailroomPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */; };
+		D31709BF60EB90168E0E76DB /* CodexHomeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3883060977CCE37ECA0E8327 /* CodexHomeBootstrap.swift */; };
+		D338FE288FB849D9525211B3 /* SenderPolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */; };
+		D969BBFC20B713F1DDAA091A /* MailPreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66641957B55753657921FCEE /* MailPreviewFixtures.swift */; };
+		DF47279963B6ABFF9ED46302 /* CodexAppServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB89F82EE9654FCB08AC3EF9 /* CodexAppServer.swift */; };
+		E1DDE9E9C7A5CC760473BB01 /* MailroomSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA7E27489F7C7F9DA28CC9A /* MailroomSetupView.swift */; };
+		E365B35934C1D3304E85A7CD /* MailroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F0FD24167FBD4724B47194 /* MailroomModels.swift */; };
+		ECBD8DCE3EF636236293DF4B /* MailroomWorkspaceModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE80478F25557FC706847A68 /* MailroomWorkspaceModel.swift */; };
+		EE903A0B7398B0F456497F9C /* MailroomDaemonClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A416A156C950DC8AA705D1D4 /* MailroomDaemonClient.swift */; };
+		EF1A9EE142539C7F8A73CE4E /* SQLiteJobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24F7F311999FD234A57B4BA1 /* SQLiteJobStore.swift */; };
+		F15C3A99271076CA596E8F06 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B14346C8ACD337F0031B09 /* main.swift */; };
+		F981D5671E81171587E38B81 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDEF19D8BCD38F5F5B1624A /* DashboardView.swift */; };
+		FB9BD1563063622091BDFC66 /* MailroomMailLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75B483EE7D731106C52BB529 /* MailroomMailLoop.swift */; };
+		FDDF094535A8C8FF467C97BA /* MailroomRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = E20F291E8960B30B86F6BF4A /* MailroomRuntime.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9BFEB6E1AED4D068895995D5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8668DD2DEA59A2B1EB5DDA68 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 49FCD40541B41C1029934EB9;
+			remoteInfo = MailroomDaemon;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		028A57A56468781665BAFC01 /* KeychainSecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainSecretStore.swift; sourceTree = "<group>"; };
+		092F98005C1ED92F4BC22D0D /* MailroomDaemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDaemon.swift; sourceTree = "<group>"; };
+		221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomPolicyModels.swift; sourceTree = "<group>"; };
+		24F7F311999FD234A57B4BA1 /* SQLiteJobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteJobStore.swift; sourceTree = "<group>"; };
+		28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomPaths.swift; sourceTree = "<group>"; };
+		2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
+		3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SenderPolicyStore.swift; sourceTree = "<group>"; };
+		3402CB58AEE9CA42F8CC8556 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3710D3F79290AB41A9664AE6 /* MailroomSkillInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomSkillInstaller.swift; sourceTree = "<group>"; };
+		3883060977CCE37ECA0E8327 /* CodexHomeBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexHomeBootstrap.swift; sourceTree = "<group>"; };
+		38F45819A1FD53D75404686A /* MailRuntimeModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailRuntimeModels.swift; sourceTree = "<group>"; };
+		3DDEF19D8BCD38F5F5B1624A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		3E89FB395CD4C78B6ECDE821 /* SQLiteMailroomLocalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteMailroomLocalStore.swift; sourceTree = "<group>"; };
+		43C18B93C4D8B820444DAB2A /* SQLiteMailroomStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteMailroomStore.swift; sourceTree = "<group>"; };
+		475921D220104AEBA7EEC15B /* PatchCourierMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PatchCourierMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4DD858ADF038EBFBCC8EABE3 /* MailroomDaemonSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDaemonSupervisor.swift; sourceTree = "<group>"; };
+		5455B0FB2AFD3833B2064678 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		658B45448A3E4232801EB890 /* MailRuntimeStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailRuntimeStateStore.swift; sourceTree = "<group>"; };
+		66641957B55753657921FCEE /* MailPreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailPreviewFixtures.swift; sourceTree = "<group>"; };
+		6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailTransportClient.swift; sourceTree = "<group>"; };
+		72C08FE67B95012C840DCB7C /* InMemoryStores.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InMemoryStores.swift; sourceTree = "<group>"; };
+		75B483EE7D731106C52BB529 /* MailroomMailLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomMailLoop.swift; sourceTree = "<group>"; };
+		77C5B1C041CF5AE3CE9BE9C7 /* MailroomControlServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomControlServer.swift; sourceTree = "<group>"; };
+		798256FCEC32368CB30804D5 /* PatchCourierMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchCourierMacApp.swift; sourceTree = "<group>"; };
+		9C661A105AAF73A582A51047 /* CodexBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexBridge.swift; sourceTree = "<group>"; };
+		9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomMailParser.swift; sourceTree = "<group>"; };
+		A0CD9713BC516DE83D50B41A /* MailroomDaemonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MailroomDaemonTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A416A156C950DC8AA705D1D4 /* MailroomDaemonClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDaemonClient.swift; sourceTree = "<group>"; };
+		A7F5176A1BD279B0C6D7580C /* MailroomNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomNotificationManager.swift; sourceTree = "<group>"; };
+		AE80478F25557FC706847A68 /* MailroomWorkspaceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomWorkspaceModel.swift; sourceTree = "<group>"; };
+		B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDomain.swift; sourceTree = "<group>"; };
+		B2B14346C8ACD337F0031B09 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalMailCodecTests.swift; sourceTree = "<group>"; };
+		C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailboxAccountStore.swift; sourceTree = "<group>"; };
+		C871027B1F00A41EE77AABF7 /* MailroomDaemon */ = {isa = PBXFileReference; includeInIndex = 0; path = MailroomDaemon; sourceTree = BUILT_PRODUCTS_DIR; };
+		C932C70D3E79DFBF16ED54A2 /* MailPolicyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailPolicyEngine.swift; sourceTree = "<group>"; };
+		D30465FE8B1AFC2EB0C926D7 /* MailroomDaemonControlModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDaemonControlModels.swift; sourceTree = "<group>"; };
+		D571FAF258679490D23D345A /* AppCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCore.swift; sourceTree = "<group>"; };
+		D8992D4664E47CDA553D28E9 /* MailroomMailParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomMailParserTests.swift; sourceTree = "<group>"; };
+		DAA7E27489F7C7F9DA28CC9A /* MailroomSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomSetupView.swift; sourceTree = "<group>"; };
+		E20F291E8960B30B86F6BF4A /* MailroomRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomRuntime.swift; sourceTree = "<group>"; };
+		EA019383CFC56A8E5EE8C6E7 /* ApprovalMailCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalMailCodec.swift; sourceTree = "<group>"; };
+		F4F0FD24167FBD4724B47194 /* MailroomModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomModels.swift; sourceTree = "<group>"; };
+		FAD16657F4060AF8FDA1FD5C /* CodexRequestModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexRequestModels.swift; sourceTree = "<group>"; };
+		FB89F82EE9654FCB08AC3EF9 /* CodexAppServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppServer.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		06394C39B457423A9D535204 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				D571FAF258679490D23D345A /* AppCore.swift */,
+				2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */,
+				3DDEF19D8BCD38F5F5B1624A /* DashboardView.swift */,
+				44E0A49E5BE81B2D18E7DC08 /* Mailroom */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		186D153A79C4F52542C2B046 /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				5455B0FB2AFD3833B2064678 /* Assets.xcassets */,
+				3402CB58AEE9CA42F8CC8556 /* Info.plist */,
+				798256FCEC32368CB30804D5 /* PatchCourierMacApp.swift */,
+			);
+			path = Mac;
+			sourceTree = "<group>";
+		};
+		188773F3C8A37DB01D3A1A56 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C871027B1F00A41EE77AABF7 /* MailroomDaemon */,
+				A0CD9713BC516DE83D50B41A /* MailroomDaemonTests.xctest */,
+				475921D220104AEBA7EEC15B /* PatchCourierMac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		25141C8D93792104B88B9756 /* Runtime */ = {
+			isa = PBXGroup;
+			children = (
+				FB89F82EE9654FCB08AC3EF9 /* CodexAppServer.swift */,
+				3883060977CCE37ECA0E8327 /* CodexHomeBootstrap.swift */,
+				B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */,
+			);
+			path = Runtime;
+			sourceTree = "<group>";
+		};
+		359E25600CA531A98D26D3F3 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				86C5F88B1A4B5C39316A9FA8 /* MailroomDaemonTests */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		44E0A49E5BE81B2D18E7DC08 /* Mailroom */ = {
+			isa = PBXGroup;
+			children = (
+				9C661A105AAF73A582A51047 /* CodexBridge.swift */,
+				FAD16657F4060AF8FDA1FD5C /* CodexRequestModels.swift */,
+				028A57A56468781665BAFC01 /* KeychainSecretStore.swift */,
+				C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */,
+				C932C70D3E79DFBF16ED54A2 /* MailPolicyEngine.swift */,
+				A416A156C950DC8AA705D1D4 /* MailroomDaemonClient.swift */,
+				D30465FE8B1AFC2EB0C926D7 /* MailroomDaemonControlModels.swift */,
+				4DD858ADF038EBFBCC8EABE3 /* MailroomDaemonSupervisor.swift */,
+				9EAA33B43C851B4FACC1B011 /* MailroomMailParser.swift */,
+				F4F0FD24167FBD4724B47194 /* MailroomModels.swift */,
+				A7F5176A1BD279B0C6D7580C /* MailroomNotificationManager.swift */,
+				28C3EA493D62E1836BEBC722 /* MailroomPaths.swift */,
+				221D4CD4E8E1D165FBCE2F25 /* MailroomPolicyModels.swift */,
+				E20F291E8960B30B86F6BF4A /* MailroomRuntime.swift */,
+				DAA7E27489F7C7F9DA28CC9A /* MailroomSetupView.swift */,
+				3710D3F79290AB41A9664AE6 /* MailroomSkillInstaller.swift */,
+				AE80478F25557FC706847A68 /* MailroomWorkspaceModel.swift */,
+				38F45819A1FD53D75404686A /* MailRuntimeModels.swift */,
+				658B45448A3E4232801EB890 /* MailRuntimeStateStore.swift */,
+				6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */,
+				3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */,
+				24F7F311999FD234A57B4BA1 /* SQLiteJobStore.swift */,
+				3E89FB395CD4C78B6ECDE821 /* SQLiteMailroomLocalStore.swift */,
+			);
+			path = Mailroom;
+			sourceTree = "<group>";
+		};
+		4C159964D2E47AF0A13EEE11 = {
+			isa = PBXGroup;
+			children = (
+				5CE353847BFB92025C646D4B /* Daemon */,
+				25141C8D93792104B88B9756 /* Runtime */,
+				06394C39B457423A9D535204 /* Shared */,
+				6F5D3F2141488731F66FB9CB /* Targets */,
+				359E25600CA531A98D26D3F3 /* Tests */,
+				188773F3C8A37DB01D3A1A56 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5CE353847BFB92025C646D4B /* Daemon */ = {
+			isa = PBXGroup;
+			children = (
+				EA019383CFC56A8E5EE8C6E7 /* ApprovalMailCodec.swift */,
+				72C08FE67B95012C840DCB7C /* InMemoryStores.swift */,
+				66641957B55753657921FCEE /* MailPreviewFixtures.swift */,
+				77C5B1C041CF5AE3CE9BE9C7 /* MailroomControlServer.swift */,
+				092F98005C1ED92F4BC22D0D /* MailroomDaemon.swift */,
+				75B483EE7D731106C52BB529 /* MailroomMailLoop.swift */,
+				B2B14346C8ACD337F0031B09 /* main.swift */,
+				43C18B93C4D8B820444DAB2A /* SQLiteMailroomStore.swift */,
+			);
+			path = Daemon;
+			sourceTree = "<group>";
+		};
+		6F5D3F2141488731F66FB9CB /* Targets */ = {
+			isa = PBXGroup;
+			children = (
+				186D153A79C4F52542C2B046 /* Mac */,
+			);
+			path = Targets;
+			sourceTree = "<group>";
+		};
+		86C5F88B1A4B5C39316A9FA8 /* MailroomDaemonTests */ = {
+			isa = PBXGroup;
+			children = (
+				B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */,
+				D8992D4664E47CDA553D28E9 /* MailroomMailParserTests.swift */,
+			);
+			path = MailroomDaemonTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0A621FA93CB125B6F58237E2 /* MailroomDaemonTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BE3F61AF18546DC5A88F4F43 /* Build configuration list for PBXNativeTarget "MailroomDaemonTests" */;
+			buildPhases = (
+				E8C1FC89A8F05AFB8305158C /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MailroomDaemonTests;
+			packageProductDependencies = (
+			);
+			productName = MailroomDaemonTests;
+			productReference = A0CD9713BC516DE83D50B41A /* MailroomDaemonTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		466884902723023BF124EF4A /* PatchCourierMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B26ADB111E3DBB1A1A8CD223 /* Build configuration list for PBXNativeTarget "PatchCourierMac" */;
+			buildPhases = (
+				5FEE80CAAB3CBA61EE6DF3AC /* Sources */,
+				7E045E22D460DE8306A888EC /* Resources */,
+				D251FF8EF02B7539C1AD0A70 /* Embed Mailroom Daemon */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				9DF65B70594953B1507FA009 /* PBXTargetDependency */,
+			);
+			name = PatchCourierMac;
+			packageProductDependencies = (
+			);
+			productName = PatchCourierMac;
+			productReference = 475921D220104AEBA7EEC15B /* PatchCourierMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		49FCD40541B41C1029934EB9 /* MailroomDaemon */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA914650D44A72E3A0DBFB07 /* Build configuration list for PBXNativeTarget "MailroomDaemon" */;
+			buildPhases = (
+				3C6CC81D51B31FD7B0AA3F42 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MailroomDaemon;
+			packageProductDependencies = (
+			);
+			productName = MailroomDaemon;
+			productReference = C871027B1F00A41EE77AABF7 /* MailroomDaemon */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8668DD2DEA59A2B1EB5DDA68 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = C1EB49A805D9D17BE17C49F6 /* Build configuration list for PBXProject "PatchCourier" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 4C159964D2E47AF0A13EEE11;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 188773F3C8A37DB01D3A1A56 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				49FCD40541B41C1029934EB9 /* MailroomDaemon */,
+				0A621FA93CB125B6F58237E2 /* MailroomDaemonTests */,
+				466884902723023BF124EF4A /* PatchCourierMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		7E045E22D460DE8306A888EC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04F371EDDE820D32EE120F69 /* Assets.xcassets in Resources */,
+				32629B6D207B6860D0E95A10 /* MailroomDaemon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D251FF8EF02B7539C1AD0A70 /* Embed Mailroom Daemon */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Mailroom Daemon";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/mailroomd",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nhelpers_dir=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Helpers\"\nmkdir -p \"${helpers_dir}\"\ncp \"${BUILT_PRODUCTS_DIR}/mailroomd\" \"${helpers_dir}/mailroomd\"\nchmod +x \"${helpers_dir}/mailroomd\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3C6CC81D51B31FD7B0AA3F42 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4AF6EB9DC630A2F25DC185F4 /* AppLocalization.swift in Sources */,
+				406B64392D6EF79FE707C5BF /* ApprovalMailCodec.swift in Sources */,
+				8AEEBB03BB0672740ADE78F3 /* CodexAppServer.swift in Sources */,
+				D31709BF60EB90168E0E76DB /* CodexHomeBootstrap.swift in Sources */,
+				0C454F586D0B786903935698 /* InMemoryStores.swift in Sources */,
+				67F643006A2E69939518276E /* KeychainSecretStore.swift in Sources */,
+				D969BBFC20B713F1DDAA091A /* MailPreviewFixtures.swift in Sources */,
+				29F21F4ABF87177929E2F58D /* MailRuntimeModels.swift in Sources */,
+				97C0ECD628A354F0D51DFF0E /* MailTransportClient.swift in Sources */,
+				7FEC9FC68D9D6B1180F1A444 /* MailboxAccountStore.swift in Sources */,
+				95AA25C3BD0ED1E90DEDA310 /* MailroomControlServer.swift in Sources */,
+				55CFA241DD8C063E15FA265F /* MailroomDaemon.swift in Sources */,
+				78917F822600512AFF485BF1 /* MailroomDaemonControlModels.swift in Sources */,
+				535F3AE161C0F21D8A73DE8A /* MailroomDomain.swift in Sources */,
+				FB9BD1563063622091BDFC66 /* MailroomMailLoop.swift in Sources */,
+				C7B2EF3209AE4AB74A627A2C /* MailroomMailParser.swift in Sources */,
+				BC5F10F2B6A6019268ADFAA6 /* MailroomModels.swift in Sources */,
+				D0443C513D4B8B1C1EB866E6 /* MailroomPaths.swift in Sources */,
+				32F53F445DDBE3ABBB08A15F /* MailroomPolicyModels.swift in Sources */,
+				8ACBD6F57E1E9E0E3D685A34 /* SQLiteMailroomStore.swift in Sources */,
+				A280F08FC184E6EBA804550A /* SenderPolicyStore.swift in Sources */,
+				F15C3A99271076CA596E8F06 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5FEE80CAAB3CBA61EE6DF3AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				52DF4B1A6A6F0CABF801F32D /* AppCore.swift in Sources */,
+				99CCE41F36DFF68502480815 /* AppLocalization.swift in Sources */,
+				BC41AD0E401D43EAB067A62B /* CodexBridge.swift in Sources */,
+				8FA6B477B4858EB095A8070B /* CodexRequestModels.swift in Sources */,
+				F981D5671E81171587E38B81 /* DashboardView.swift in Sources */,
+				0E464F8F5CDBCAD8C84F93F4 /* KeychainSecretStore.swift in Sources */,
+				8D025E7D8AAA0DE5908B1F00 /* MailPolicyEngine.swift in Sources */,
+				224941E088831E1CBE5DD821 /* MailRuntimeModels.swift in Sources */,
+				4330B60E3B0ED4B3ED14146B /* MailRuntimeStateStore.swift in Sources */,
+				33416C08DE14C8FFE1C60811 /* MailTransportClient.swift in Sources */,
+				49AC0FE0470D256E653774A2 /* MailboxAccountStore.swift in Sources */,
+				EE903A0B7398B0F456497F9C /* MailroomDaemonClient.swift in Sources */,
+				690702F90E88B52CCC7BB7CE /* MailroomDaemonControlModels.swift in Sources */,
+				5E3645B24C624C619EDFE9A6 /* MailroomDaemonSupervisor.swift in Sources */,
+				842C2A016BC1A53A61A85100 /* MailroomMailParser.swift in Sources */,
+				E365B35934C1D3304E85A7CD /* MailroomModels.swift in Sources */,
+				4E5298AF0BAA806272BB1204 /* MailroomNotificationManager.swift in Sources */,
+				7B27DD27E9DFB763BB2DE94A /* MailroomPaths.swift in Sources */,
+				B2B51BE99F8F4AFB4C3D7223 /* MailroomPolicyModels.swift in Sources */,
+				FDDF094535A8C8FF467C97BA /* MailroomRuntime.swift in Sources */,
+				E1DDE9E9C7A5CC760473BB01 /* MailroomSetupView.swift in Sources */,
+				34188669DE60C4018BB17B11 /* MailroomSkillInstaller.swift in Sources */,
+				ECBD8DCE3EF636236293DF4B /* MailroomWorkspaceModel.swift in Sources */,
+				A26407F399043FDCB73ECFA0 /* PatchCourierMacApp.swift in Sources */,
+				EF1A9EE142539C7F8A73CE4E /* SQLiteJobStore.swift in Sources */,
+				CEA72FABD1103C729F85C713 /* SQLiteMailroomLocalStore.swift in Sources */,
+				03FD9E07E44F311A72FE1196 /* SenderPolicyStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E8C1FC89A8F05AFB8305158C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37BFA3B7BC00A6B919ED90FB /* AppLocalization.swift in Sources */,
+				A2CB8FE38EEBE76F855561D4 /* ApprovalMailCodec.swift in Sources */,
+				C947E1AA6A598268CF9CBB0D /* ApprovalMailCodecTests.swift in Sources */,
+				DF47279963B6ABFF9ED46302 /* CodexAppServer.swift in Sources */,
+				0C8EF7B679E3B8B4C70948EA /* CodexHomeBootstrap.swift in Sources */,
+				0D4BCF3C5F87FD4A4928E250 /* InMemoryStores.swift in Sources */,
+				4D9632DCEB62D6D0EA6057AE /* KeychainSecretStore.swift in Sources */,
+				2F4BC679B071C408D6010510 /* MailPreviewFixtures.swift in Sources */,
+				72E326019C2CD0F0E7D0FD2D /* MailRuntimeModels.swift in Sources */,
+				1BD86B32289FBA014422664D /* MailTransportClient.swift in Sources */,
+				1B1B18DD970BDE17F3CDCA5E /* MailboxAccountStore.swift in Sources */,
+				8C84788CBC92892FB9CA9440 /* MailroomControlServer.swift in Sources */,
+				C3C82EB536F1AD3BF29957F4 /* MailroomDaemon.swift in Sources */,
+				7C988E8514F271FE6F8015F2 /* MailroomDaemonControlModels.swift in Sources */,
+				A190C6D1A7A95D2E2EA67F6B /* MailroomDomain.swift in Sources */,
+				83784026C37D4CE341B02815 /* MailroomMailLoop.swift in Sources */,
+				C3BC0E93D8A1A90994846EDE /* MailroomMailParser.swift in Sources */,
+				9245014DADE435171CB37996 /* MailroomMailParserTests.swift in Sources */,
+				96E00559ECA8C934CD6BDFB5 /* MailroomModels.swift in Sources */,
+				3C44B622DFB192B5AA329685 /* MailroomPaths.swift in Sources */,
+				781F52AEA97987BA7F99ECC1 /* MailroomPolicyModels.swift in Sources */,
+				96CE6889E8FC561E5419C727 /* SQLiteMailroomStore.swift in Sources */,
+				D338FE288FB849D9525211B3 /* SenderPolicyStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		9DF65B70594953B1507FA009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 49FCD40541B41C1029934EB9 /* MailroomDaemon */;
+			targetProxy = 9BFEB6E1AED4D068895995D5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		056E4B93E474373A0BD08798 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		0BBCED72678AFDD932AA858E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		213614BE7A855E8A861A568F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_NAME = mailroomd;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		3A51FCCBA33E8CED6F736735 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Targets/Mac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.patchcourier.mac;
+				PRODUCT_NAME = "Patch Courier";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		56DC4B9DFF22FA9F69607A94 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.patchcourier.daemon-tests";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		63E195BA70F0B6C2B2240999 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Targets/Mac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.patchcourier.mac;
+				PRODUCT_NAME = "Patch Courier";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		B48C9B1E343B82BFBDDD9B59 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_NAME = mailroomd;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		E7FBD808D06A28E3B1DC87E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "io.github.patchcourier.daemon-tests";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B26ADB111E3DBB1A1A8CD223 /* Build configuration list for PBXNativeTarget "PatchCourierMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				63E195BA70F0B6C2B2240999 /* Debug */,
+				3A51FCCBA33E8CED6F736735 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BA914650D44A72E3A0DBFB07 /* Build configuration list for PBXNativeTarget "MailroomDaemon" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B48C9B1E343B82BFBDDD9B59 /* Debug */,
+				213614BE7A855E8A861A568F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BE3F61AF18546DC5A88F4F43 /* Build configuration list for PBXNativeTarget "MailroomDaemonTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56DC4B9DFF22FA9F69607A94 /* Debug */,
+				E7FBD808D06A28E3B1DC87E2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C1EB49A805D9D17BE17C49F6 /* Build configuration list for PBXProject "PatchCourier" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0BBCED72678AFDD932AA858E /* Debug */,
+				056E4B93E474373A0BD08798 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8668DD2DEA59A2B1EB5DDA68 /* Project object */;
+}
