@@ -180,12 +180,92 @@ final class MailroomTurnNotificationTests: XCTestCase {
         XCTAssertEqual(decision, .process)
     }
 
+    func testMailboxPollIncidentRecordsResolvesAndAppearsInSnapshot() async throws {
+        let pollIncidentStore = InMemoryMailboxPollIncidentStore()
+        let accountStore = InMemoryMailboxAccountConfigStore()
+        let daemon = makeDaemon(
+            turnStore: InMemoryTurnStore(),
+            approvalStore: InMemoryApprovalStore(),
+            pollIncidentStore: pollIncidentStore,
+            accountStore: accountStore
+        )
+        let account = makeMailboxAccount()
+        let occurredAt = Date(timeIntervalSince1970: 100)
+        let retryAt = Date(timeIntervalSince1970: 160)
+
+        try await accountStore.upsertMailboxAccount(account)
+        try await daemon.recordMailboxPollIncident(
+            account: account,
+            phase: "poll",
+            message: "IMAP timeout",
+            lastSeenUID: 42,
+            retryAt: retryAt,
+            occurredAt: occurredAt
+        )
+
+        let snapshot = try await daemon.makeControlSnapshot()
+        XCTAssertEqual(snapshot.mailboxPollIncidents.count, 1)
+        XCTAssertEqual(snapshot.mailboxPollIncidents.first?.phase, "poll")
+        XCTAssertEqual(snapshot.mailboxPollIncidents.first?.message, "IMAP timeout")
+        XCTAssertEqual(snapshot.mailboxPollIncidents.first?.lastSeenUID, 42)
+        XCTAssertEqual(snapshot.mailboxPollIncidents.first?.retryAt, retryAt)
+        XCTAssertNil(snapshot.mailboxPollIncidents.first?.resolvedAt)
+
+        let resolvedAt = Date(timeIntervalSince1970: 220)
+        try await daemon.resolveMailboxPollIncidents(account: account, resolvedAt: resolvedAt)
+
+        let incidents = try await pollIncidentStore.recentPollIncidents(limit: 10, mailboxID: account.id)
+        XCTAssertEqual(incidents.first?.resolvedAt, resolvedAt)
+    }
+
+    func testSQLiteMailboxPollIncidentStorePersistsAndResolves() async throws {
+        let supportRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PatchCourierSQLiteIncidentTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: supportRoot) }
+
+        let store = try SQLiteMailroomStore(
+            databasePath: supportRoot.appendingPathComponent("mailroom.sqlite3").path
+        )
+        let account = makeMailboxAccount()
+        let incident = MailroomMailboxPollIncidentRecord(
+            id: "incident-1",
+            mailboxID: account.id,
+            mailboxLabel: nil,
+            mailboxEmailAddress: nil,
+            phase: "poll",
+            message: "Could not search mailbox UIDs.",
+            lastSeenUID: 41,
+            retryAt: Date(timeIntervalSince1970: 120),
+            occurredAt: Date(timeIntervalSince1970: 100),
+            resolvedAt: nil,
+            updatedAt: Date(timeIntervalSince1970: 100)
+        )
+
+        try await store.upsertMailboxAccount(account)
+        try await store.save(pollIncident: incident)
+
+        let openIncidents = try await store.recentPollIncidents(limit: 10, mailboxID: account.id)
+        XCTAssertEqual(openIncidents.count, 1)
+        XCTAssertEqual(openIncidents.first?.mailboxLabel, account.label)
+        XCTAssertEqual(openIncidents.first?.mailboxEmailAddress, account.emailAddress)
+        XCTAssertEqual(openIncidents.first?.lastSeenUID, 41)
+        XCTAssertNil(openIncidents.first?.resolvedAt)
+
+        let resolvedAt = Date(timeIntervalSince1970: 180)
+        try await store.resolveOpenPollIncidents(accountID: account.id, resolvedAt: resolvedAt)
+
+        let resolvedIncidents = try await store.recentPollIncidents(limit: 10, mailboxID: account.id)
+        XCTAssertEqual(resolvedIncidents.first?.resolvedAt, resolvedAt)
+    }
+
     private func makeDaemon(
         threadStore: ThreadStore = InMemoryThreadStore(),
         turnStore: TurnStore,
         approvalStore: ApprovalStore,
         eventStore: EventStore = InMemoryEventStore(),
         mailboxMessageStore: MailboxMessageStore = InMemoryMailboxMessageStore(),
+        pollIncidentStore: MailboxPollIncidentStore = InMemoryMailboxPollIncidentStore(),
+        accountStore: MailboxAccountConfigStore = InMemoryMailboxAccountConfigStore(),
         configure: (inout MailroomDaemonConfiguration) -> Void = { _ in }
     ) -> MailroomDaemon {
         var configuration = MailroomDaemonConfiguration.default()
@@ -208,7 +288,8 @@ final class MailroomTurnNotificationTests: XCTestCase {
             eventStore: eventStore,
             syncStore: InMemoryMailboxSyncStore(),
             mailboxMessageStore: mailboxMessageStore,
-            accountStore: InMemoryMailboxAccountConfigStore(),
+            pollIncidentStore: pollIncidentStore,
+            accountStore: accountStore,
             senderPolicyStore: InMemorySenderPolicyConfigStore(),
             managedProjectStore: InMemoryManagedProjectConfigStore()
         )

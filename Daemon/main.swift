@@ -162,6 +162,7 @@ Task {
             eventStore: store,
             syncStore: store,
             mailboxMessageStore: store,
+            pollIncidentStore: store,
             accountStore: store,
             senderPolicyStore: store,
             managedProjectStore: store

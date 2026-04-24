@@ -197,6 +197,7 @@ struct MailroomDaemonStateSnapshot: Codable, Hashable, Sendable {
     var approvals: [MailroomDaemonApprovalSummary]
     var syncCursors: [MailroomDaemonSyncCursorSummary]
     var mailboxMessages: [MailroomMailboxMessageRecord]
+    var mailboxPollIncidents: [MailroomMailboxPollIncidentRecord]
     var recentMailActivity: [MailroomDaemonRecentMessageSummary]
 
     private enum CodingKeys: String, CodingKey {
@@ -215,6 +216,7 @@ struct MailroomDaemonStateSnapshot: Codable, Hashable, Sendable {
         case approvals
         case syncCursors
         case mailboxMessages
+        case mailboxPollIncidents
         case recentMailActivity
     }
 
@@ -234,6 +236,7 @@ struct MailroomDaemonStateSnapshot: Codable, Hashable, Sendable {
         approvals: [MailroomDaemonApprovalSummary],
         syncCursors: [MailroomDaemonSyncCursorSummary],
         mailboxMessages: [MailroomMailboxMessageRecord],
+        mailboxPollIncidents: [MailroomMailboxPollIncidentRecord],
         recentMailActivity: [MailroomDaemonRecentMessageSummary]
     ) {
         self.generatedAt = generatedAt
@@ -251,6 +254,7 @@ struct MailroomDaemonStateSnapshot: Codable, Hashable, Sendable {
         self.approvals = approvals
         self.syncCursors = syncCursors
         self.mailboxMessages = mailboxMessages
+        self.mailboxPollIncidents = mailboxPollIncidents
         self.recentMailActivity = recentMailActivity
     }
 
@@ -271,6 +275,7 @@ struct MailroomDaemonStateSnapshot: Codable, Hashable, Sendable {
         approvals = try container.decodeIfPresent([MailroomDaemonApprovalSummary].self, forKey: .approvals) ?? []
         syncCursors = try container.decodeIfPresent([MailroomDaemonSyncCursorSummary].self, forKey: .syncCursors) ?? []
         mailboxMessages = try container.decodeIfPresent([MailroomMailboxMessageRecord].self, forKey: .mailboxMessages) ?? []
+        mailboxPollIncidents = try container.decodeIfPresent([MailroomMailboxPollIncidentRecord].self, forKey: .mailboxPollIncidents) ?? []
         recentMailActivity = try container.decodeIfPresent([MailroomDaemonRecentMessageSummary].self, forKey: .recentMailActivity) ?? []
     }
 }

@@ -82,6 +82,10 @@ final class MailroomWorkspaceModel: ObservableObject {
         daemonSnapshot?.mailboxHealth ?? []
     }
 
+    var daemonMailboxPollIncidents: [MailroomMailboxPollIncidentRecord] {
+        daemonSnapshot?.mailboxPollIncidents ?? []
+    }
+
     var daemonWorkers: [MailroomDaemonWorkerSummary] {
         daemonSnapshot?.workers ?? []
     }

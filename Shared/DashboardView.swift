@@ -852,6 +852,7 @@ private struct ApprovalQuestionCard: View {
 
 private struct DaemonMailboxHealthCard: View {
     let mailbox: MailroomDaemonMailboxHealthSummary
+    let latestIncident: MailroomMailboxPollIncidentRecord?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -930,6 +931,10 @@ private struct DaemonMailboxHealthCard: View {
                     DetailMetaRow(label: LT("Transport error", "传输错误", "転送エラー"), value: lastError)
                 }
             }
+
+            if let latestIncident {
+                MailboxIncidentCallout(incident: latestIncident)
+            }
         }
         .padding(18)
         .background(
@@ -988,6 +993,75 @@ private struct DaemonMailboxHealthCard: View {
             "每 \(mailbox.pollingIntervalSeconds) 秒",
             "\(mailbox.pollingIntervalSeconds) 秒ごと"
         )
+    }
+}
+
+private struct MailboxIncidentCallout: View {
+    let incident: MailroomMailboxPollIncidentRecord
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                MessagePill(label: statusLabel, tint: statusTint)
+                MessagePill(label: phaseLabel, tint: Color(red: 0.37, green: 0.42, blue: 0.49))
+            }
+
+            Text(incident.message)
+                .font(.caption)
+                .foregroundStyle(Color(red: 0.23, green: 0.25, blue: 0.30))
+                .lineLimit(4)
+
+            HStack(spacing: 10) {
+                Text(incident.occurredAt.formatted(date: .abbreviated, time: .shortened))
+                if let lastSeenUID = incident.lastSeenUID {
+                    Text("UID \(lastSeenUID)")
+                }
+                if let retryAt = incident.retryAt, incident.resolvedAt == nil {
+                    Text(LT(
+                        "Retry \(retryAt.formatted(date: .omitted, time: .shortened))",
+                        "重试 \(retryAt.formatted(date: .omitted, time: .shortened))",
+                        "リトライ \(retryAt.formatted(date: .omitted, time: .shortened))"
+                    ))
+                }
+                if let resolvedAt = incident.resolvedAt {
+                    Text(LT(
+                        "Recovered \(resolvedAt.formatted(date: .omitted, time: .shortened))",
+                        "已恢复 \(resolvedAt.formatted(date: .omitted, time: .shortened))",
+                        "復旧 \(resolvedAt.formatted(date: .omitted, time: .shortened))"
+                    ))
+                }
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(statusTint.opacity(0.09))
+        )
+    }
+
+    private var statusLabel: String {
+        incident.resolvedAt == nil
+            ? LT("Open incident", "未恢复事件", "未解決インシデント")
+            : LT("Recovered", "已恢复", "復旧済み")
+    }
+
+    private var statusTint: Color {
+        incident.resolvedAt == nil ? .red : .green
+    }
+
+    private var phaseLabel: String {
+        switch incident.phase {
+        case "history":
+            return LT("History sync", "历史同步", "履歴同期")
+        case "sync":
+            return LT("Manual sync", "手动同步", "手動同期")
+        case "poll":
+            return LT("Mailbox poll", "邮箱轮询", "メールポーリング")
+        default:
+            return incident.phase
+        }
     }
 }
 
@@ -1219,6 +1293,17 @@ private struct MailDeskSection: View {
         return workspaceModel.daemonMailboxHealth.first(where: { $0.accountID == accountID })
     }
 
+    private var identityMailboxIncident: MailroomMailboxPollIncidentRecord? {
+        guard let accountID = workspaceModel.identityAccount?.id else {
+            return nil
+        }
+        return latestMailboxIncident(accountID: accountID)
+    }
+
+    private func latestMailboxIncident(accountID: String) -> MailroomMailboxPollIncidentRecord? {
+        workspaceModel.daemonMailboxPollIncidents.first(where: { $0.mailboxID == accountID })
+    }
+
     private var activeWorkers: [MailroomDaemonWorkerSummary] {
         workspaceModel.daemonWorkers.sorted { lhs, rhs in
             if lhs.isActive != rhs.isActive {
@@ -1249,6 +1334,7 @@ private struct MailDeskSection: View {
             MailDeskSidebar(
                 identityAccount: workspaceModel.identityAccount,
                 mailboxHealth: identityMailboxHealth,
+                latestIncident: identityMailboxIncident,
                 groups: senderGroups,
                 selectedItemID: effectiveSelectedItem?.id,
                 inboxCount: feedItems.count,
@@ -1423,6 +1509,7 @@ private struct MailDeskListGroup: Identifiable {
 private struct MailDeskSidebar: View {
     let identityAccount: ConfiguredMailboxAccount?
     let mailboxHealth: MailroomDaemonMailboxHealthSummary?
+    let latestIncident: MailroomMailboxPollIncidentRecord?
     let groups: [MailDeskListGroup]
     let selectedItemID: String?
     let inboxCount: Int
@@ -1435,6 +1522,7 @@ private struct MailDeskSidebar: View {
             MailDeskMailboxCard(
                 identityAccount: identityAccount,
                 mailboxHealth: mailboxHealth,
+                latestIncident: latestIncident,
                 inboxCount: inboxCount,
                 whitelistCount: whitelistCount,
                 otherCount: otherCount
@@ -1523,6 +1611,7 @@ private struct MailDeskSidebar: View {
 private struct MailDeskMailboxCard: View {
     let identityAccount: ConfiguredMailboxAccount?
     let mailboxHealth: MailroomDaemonMailboxHealthSummary?
+    let latestIncident: MailroomMailboxPollIncidentRecord?
     let inboxCount: Int
     let whitelistCount: Int
     let otherCount: Int
@@ -1579,6 +1668,32 @@ private struct MailDeskMailboxCard: View {
 
                 if let mailboxHealth {
                     MessagePill(label: mailboxStateTitle(mailboxHealth.state), tint: mailboxStateTint(mailboxHealth.state))
+                }
+
+                if let latestIncident, latestIncident.resolvedAt == nil {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(LT("Mailbox transport needs attention", "邮箱传输需要处理", "メール転送に対応が必要"))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.red)
+                        Text(latestIncident.message)
+                            .font(.caption)
+                            .foregroundStyle(Color(red: 0.52, green: 0.12, blue: 0.10))
+                            .lineLimit(3)
+                        if let retryAt = latestIncident.retryAt {
+                            Text(LT(
+                                "Next retry \(retryAt.formatted(date: .omitted, time: .shortened))",
+                                "下次重试 \(retryAt.formatted(date: .omitted, time: .shortened))",
+                                "次回リトライ \(retryAt.formatted(date: .omitted, time: .shortened))"
+                            ))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.red.opacity(0.07))
+                    )
                 }
             } else {
                 Text(LT("No relay mailbox is configured yet.", "还没有配置任何信使邮箱。", "中継メールがまだ設定されていない。"))
@@ -3974,6 +4089,10 @@ private struct RuntimeSettingsPane: View {
             ?? LT("Not found yet", "暂未发现", "未検出")
     }
 
+    private func latestMailboxIncident(accountID: String) -> MailroomMailboxPollIncidentRecord? {
+        workspaceModel.daemonMailboxPollIncidents.first(where: { $0.mailboxID == accountID })
+    }
+
     private func refreshRuntime() {
         Task { await workspaceModel.refreshMailDesk() }
     }
@@ -4124,7 +4243,10 @@ private struct RuntimeSettingsPane: View {
                             )
                         } else {
                             ForEach(workspaceModel.daemonMailboxHealth) { mailbox in
-                                DaemonMailboxHealthCard(mailbox: mailbox)
+                                DaemonMailboxHealthCard(
+                                    mailbox: mailbox,
+                                    latestIncident: latestMailboxIncident(accountID: mailbox.accountID)
+                                )
                             }
                         }
                     }

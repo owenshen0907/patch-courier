@@ -585,13 +585,21 @@ extension MailroomDaemon {
 
         noteMailboxPollStarted(account: account)
 
+        var lastUID: UInt64?
         do {
+            lastUID = try await syncStore.syncCursor(accountID: account.id)?.lastSeenUID
             do {
                 try await backfillMailboxHistoryIfNeeded(account: account, password: password)
             } catch {
+                try? await recordMailboxPollIncident(
+                    account: account,
+                    phase: "history",
+                    message: error.localizedDescription,
+                    lastSeenUID: lastUID,
+                    retryAt: nil
+                )
                 print("mailroomd mailbox backfill skipped [\(account.id)]: \(error.localizedDescription)")
             }
-            let lastUID = try await syncStore.syncCursor(accountID: account.id)?.lastSeenUID
             let fetchResult = try await fetchMessagesViaTransport(
                 account: account,
                 password: password,
@@ -652,8 +660,17 @@ extension MailroomDaemon {
                 queuedCount: queuedCount,
                 didBootstrap: fetchResult.didBootstrap
             )
+            try await resolveMailboxPollIncidents(account: account)
         } catch {
             noteMailboxPollFailed(account: account, error: error.localizedDescription)
+            let retryAt = Date().addingTimeInterval(TimeInterval(max(account.pollingIntervalSeconds, 15)))
+            try? await recordMailboxPollIncident(
+                account: account,
+                phase: "poll",
+                message: error.localizedDescription,
+                lastSeenUID: lastUID,
+                retryAt: retryAt
+            )
             throw error
         }
     }
@@ -791,13 +808,21 @@ extension MailroomDaemon {
 
         noteMailboxPollStarted(account: account)
 
+        var lastUID: UInt64?
         do {
+            lastUID = try await syncStore.syncCursor(accountID: account.id)?.lastSeenUID
             do {
                 try await backfillMailboxHistoryIfNeeded(account: account, password: password)
             } catch {
+                try? await recordMailboxPollIncident(
+                    account: account,
+                    phase: "history",
+                    message: error.localizedDescription,
+                    lastSeenUID: lastUID,
+                    retryAt: nil
+                )
                 print("mailroomd mailbox backfill skipped [\(account.id)]: \(error.localizedDescription)")
             }
-            let lastUID = try await syncStore.syncCursor(accountID: account.id)?.lastSeenUID
             let fetchResult = try await fetchMessagesViaTransport(
                 account: account,
                 password: password,
@@ -837,6 +862,7 @@ extension MailroomDaemon {
                     queuedCount: 0,
                     didBootstrap: true
                 )
+                try await resolveMailboxPollIncidents(account: account)
                 return MailroomMailboxSyncReport(
                     accountID: account.id,
                     emailAddress: account.emailAddress,
@@ -899,6 +925,7 @@ extension MailroomDaemon {
                 queuedCount: processedCount,
                 didBootstrap: false
             )
+            try await resolveMailboxPollIncidents(account: account)
 
             return MailroomMailboxSyncReport(
                 accountID: account.id,
@@ -914,6 +941,13 @@ extension MailroomDaemon {
             )
         } catch {
             noteMailboxPollFailed(account: account, error: error.localizedDescription)
+            try? await recordMailboxPollIncident(
+                account: account,
+                phase: "sync",
+                message: error.localizedDescription,
+                lastSeenUID: lastUID,
+                retryAt: nil
+            )
             throw error
         }
     }

@@ -97,6 +97,40 @@ actor InMemoryMailboxMessageStore: MailboxMessageStore {
     }
 }
 
+actor InMemoryMailboxPollIncidentStore: MailboxPollIncidentStore {
+    private var incidentsByID: [String: MailroomMailboxPollIncidentRecord] = [:]
+
+    func save(pollIncident: MailroomMailboxPollIncidentRecord) async throws {
+        incidentsByID[pollIncident.id] = pollIncident
+    }
+
+    func resolveOpenPollIncidents(accountID: String, resolvedAt: Date) async throws {
+        for (id, incident) in incidentsByID where incident.mailboxID == accountID && incident.resolvedAt == nil {
+            var resolvedIncident = incident
+            resolvedIncident.resolvedAt = resolvedAt
+            resolvedIncident.updatedAt = resolvedAt
+            incidentsByID[id] = resolvedIncident
+        }
+    }
+
+    func recentPollIncidents(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxPollIncidentRecord] {
+        let filtered = incidentsByID.values
+            .filter { incident in
+                mailboxID.map { incident.mailboxID == $0 } ?? true
+            }
+            .sorted { lhs, rhs in
+                if (lhs.resolvedAt == nil) != (rhs.resolvedAt == nil) {
+                    return lhs.resolvedAt == nil
+                }
+                if lhs.occurredAt != rhs.occurredAt {
+                    return lhs.occurredAt > rhs.occurredAt
+                }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+        return Array(filtered.prefix(max(limit, 0)))
+    }
+}
+
 actor InMemoryTurnStore: TurnStore {
     private var turns: [String: MailroomTurnRecord] = [:]
 

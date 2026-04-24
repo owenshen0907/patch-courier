@@ -656,6 +656,143 @@ extension SQLiteMailroomStore: MailboxMessageStore {
     }
 }
 
+extension SQLiteMailroomStore: MailboxPollIncidentStore {
+    func save(pollIncident: MailroomMailboxPollIncidentRecord) async throws {
+        try withDatabase { database in
+            let sql = """
+            INSERT INTO mailbox_poll_incidents (
+                id,
+                mailbox_id,
+                phase,
+                message,
+                last_seen_uid,
+                retry_at,
+                occurred_at,
+                resolved_at,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                mailbox_id = excluded.mailbox_id,
+                phase = excluded.phase,
+                message = excluded.message,
+                last_seen_uid = excluded.last_seen_uid,
+                retry_at = excluded.retry_at,
+                occurred_at = excluded.occurred_at,
+                resolved_at = excluded.resolved_at,
+                updated_at = excluded.updated_at;
+            """
+
+            let statement = try prepare(sql, in: database)
+            defer { sqlite3_finalize(statement) }
+
+            bind(pollIncident.id, at: 1, in: statement)
+            bind(pollIncident.mailboxID, at: 2, in: statement)
+            bind(pollIncident.phase, at: 3, in: statement)
+            bind(pollIncident.message, at: 4, in: statement)
+            bind(pollIncident.lastSeenUID.flatMap { Int64(exactly: $0) }, at: 5, in: statement)
+            bind(pollIncident.retryAt?.timeIntervalSince1970, at: 6, in: statement)
+            bind(pollIncident.occurredAt.timeIntervalSince1970, at: 7, in: statement)
+            bind(pollIncident.resolvedAt?.timeIntervalSince1970, at: 8, in: statement)
+            bind(pollIncident.updatedAt.timeIntervalSince1970, at: 9, in: statement)
+
+            guard sqlite3_step(statement) == SQLITE_DONE else {
+                throw SQLiteMailroomStoreError.statementFailed(message(from: database))
+            }
+        }
+    }
+
+    func resolveOpenPollIncidents(accountID: String, resolvedAt: Date) async throws {
+        try withDatabase { database in
+            let sql = """
+            UPDATE mailbox_poll_incidents
+            SET
+                resolved_at = ?,
+                updated_at = ?
+            WHERE mailbox_id = ? AND resolved_at IS NULL;
+            """
+
+            let statement = try prepare(sql, in: database)
+            defer { sqlite3_finalize(statement) }
+
+            bind(resolvedAt.timeIntervalSince1970, at: 1, in: statement)
+            bind(resolvedAt.timeIntervalSince1970, at: 2, in: statement)
+            bind(accountID, at: 3, in: statement)
+
+            guard sqlite3_step(statement) == SQLITE_DONE else {
+                throw SQLiteMailroomStoreError.statementFailed(message(from: database))
+            }
+        }
+    }
+
+    func recentPollIncidents(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxPollIncidentRecord] {
+        guard limit > 0 else {
+            return []
+        }
+
+        return try withDatabase { database in
+            let sql: String
+            if mailboxID == nil {
+                sql = """
+                SELECT
+                    incidents.id,
+                    incidents.mailbox_id,
+                    accounts.label,
+                    accounts.email_address,
+                    incidents.phase,
+                    incidents.message,
+                    incidents.last_seen_uid,
+                    incidents.retry_at,
+                    incidents.occurred_at,
+                    incidents.resolved_at,
+                    incidents.updated_at
+                FROM mailbox_poll_incidents AS incidents
+                LEFT JOIN mailbox_accounts AS accounts
+                    ON accounts.id = incidents.mailbox_id
+                ORDER BY incidents.resolved_at IS NOT NULL ASC, incidents.occurred_at DESC, incidents.updated_at DESC
+                LIMIT ?;
+                """
+            } else {
+                sql = """
+                SELECT
+                    incidents.id,
+                    incidents.mailbox_id,
+                    accounts.label,
+                    accounts.email_address,
+                    incidents.phase,
+                    incidents.message,
+                    incidents.last_seen_uid,
+                    incidents.retry_at,
+                    incidents.occurred_at,
+                    incidents.resolved_at,
+                    incidents.updated_at
+                FROM mailbox_poll_incidents AS incidents
+                LEFT JOIN mailbox_accounts AS accounts
+                    ON accounts.id = incidents.mailbox_id
+                WHERE incidents.mailbox_id = ?
+                ORDER BY incidents.resolved_at IS NOT NULL ASC, incidents.occurred_at DESC, incidents.updated_at DESC
+                LIMIT ?;
+                """
+            }
+
+            let statement = try prepare(sql, in: database)
+            defer { sqlite3_finalize(statement) }
+
+            if let mailboxID {
+                bind(mailboxID, at: 1, in: statement)
+                bind(Int64(limit), at: 2, in: statement)
+            } else {
+                bind(Int64(limit), at: 1, in: statement)
+            }
+
+            var rows: [MailroomMailboxPollIncidentRecord] = []
+            while sqlite3_step(statement) == SQLITE_ROW {
+                rows.append(decodeMailboxPollIncident(from: statement))
+            }
+            return rows
+        }
+    }
+}
+
 extension SQLiteMailroomStore: TurnStore {
     func save(turn: MailroomTurnRecord) async throws {
         try withDatabase { database in
@@ -1229,6 +1366,22 @@ private extension SQLiteMailroomStore {
             )
             try execute(
                 """
+                CREATE TABLE IF NOT EXISTS mailbox_poll_incidents (
+                    id TEXT PRIMARY KEY,
+                    mailbox_id TEXT NOT NULL,
+                    phase TEXT NOT NULL,
+                    message TEXT NOT NULL,
+                    last_seen_uid INTEGER,
+                    retry_at REAL,
+                    occurred_at REAL NOT NULL,
+                    resolved_at REAL,
+                    updated_at REAL NOT NULL
+                );
+                """,
+                in: database
+            )
+            try execute(
+                """
                 CREATE TABLE IF NOT EXISTS codex_turns (
                     id TEXT PRIMARY KEY,
                     mail_thread_token TEXT,
@@ -1268,6 +1421,8 @@ private extension SQLiteMailroomStore {
             try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_mailbox_received_at ON mail_messages(mailbox_id, received_at DESC);", in: database)
             try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_received_at ON mail_messages(received_at DESC);", in: database)
             try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_message_id ON mail_messages(message_id);", in: database)
+            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_mailbox_occurred ON mailbox_poll_incidents(mailbox_id, occurred_at DESC);", in: database)
+            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_open ON mailbox_poll_incidents(mailbox_id, resolved_at);", in: database)
         }
     }
 
@@ -1478,6 +1633,22 @@ private extension SQLiteMailroomStore {
             note: string(at: 16, from: statement) ?? "",
             processedAt: date(at: 17, from: statement),
             updatedAt: date(at: 18, from: statement) ?? Date()
+        )
+    }
+
+    func decodeMailboxPollIncident(from statement: OpaquePointer?) -> MailroomMailboxPollIncidentRecord {
+        MailroomMailboxPollIncidentRecord(
+            id: string(at: 0, from: statement) ?? UUID().uuidString,
+            mailboxID: string(at: 1, from: statement) ?? "",
+            mailboxLabel: string(at: 2, from: statement),
+            mailboxEmailAddress: string(at: 3, from: statement),
+            phase: string(at: 4, from: statement) ?? "poll",
+            message: string(at: 5, from: statement) ?? "",
+            lastSeenUID: int64(at: 6, from: statement).flatMap(UInt64.init),
+            retryAt: date(at: 7, from: statement),
+            occurredAt: date(at: 8, from: statement) ?? Date(),
+            resolvedAt: date(at: 9, from: statement),
+            updatedAt: date(at: 10, from: statement) ?? Date()
         )
     }
 

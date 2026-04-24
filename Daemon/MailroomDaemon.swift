@@ -196,6 +196,7 @@ actor MailroomDaemon {
     let eventStore: EventStore
     let syncStore: MailboxSyncStore
     let mailboxMessageStore: MailboxMessageStore
+    let pollIncidentStore: MailboxPollIncidentStore
     let accountStore: MailboxAccountConfigStore
     let senderPolicyStore: SenderPolicyConfigStore
     let managedProjectStore: ManagedProjectConfigStore
@@ -226,6 +227,7 @@ actor MailroomDaemon {
         eventStore: EventStore,
         syncStore: MailboxSyncStore,
         mailboxMessageStore: MailboxMessageStore,
+        pollIncidentStore: MailboxPollIncidentStore,
         accountStore: MailboxAccountConfigStore,
         senderPolicyStore: SenderPolicyConfigStore,
         managedProjectStore: ManagedProjectConfigStore
@@ -237,6 +239,7 @@ actor MailroomDaemon {
         self.eventStore = eventStore
         self.syncStore = syncStore
         self.mailboxMessageStore = mailboxMessageStore
+        self.pollIncidentStore = pollIncidentStore
         self.accountStore = accountStore
         self.senderPolicyStore = senderPolicyStore
         self.managedProjectStore = managedProjectStore
@@ -449,6 +452,7 @@ actor MailroomDaemon {
             )
         }
         let mailboxMessages = try await mailboxMessageStore.recentMailboxMessages(limit: 200, mailboxID: nil)
+        let mailboxPollIncidents = try await pollIncidentStore.recentPollIncidents(limit: 50, mailboxID: nil)
         let mailboxHealth = makeMailboxHealthSummaries(
             mailboxAccounts: mailboxAccounts,
             syncCursors: syncCursorSummaries
@@ -472,6 +476,7 @@ actor MailroomDaemon {
             approvals: approvalSummaries,
             syncCursors: syncCursorSummaries,
             mailboxMessages: mailboxMessages,
+            mailboxPollIncidents: mailboxPollIncidents,
             recentMailActivity: recentMailActivity
         )
     }
@@ -650,6 +655,39 @@ actor MailroomDaemon {
         state.nextPollAt = nextPollAtByAccount[account.id]
         state.updatedAt = now
         mailboxPollStates[account.id] = state
+    }
+
+    func recordMailboxPollIncident(
+        account: MailboxAccount,
+        phase: String,
+        message: String,
+        lastSeenUID: UInt64?,
+        retryAt: Date?,
+        occurredAt: Date = Date()
+    ) async throws {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanedMessage = trimmedMessage.isEmpty
+            ? LT("Unknown mailbox transport failure.", "未知邮箱传输失败。", "不明なメール転送エラー。")
+            : trimmedMessage
+        let boundedMessage = String(cleanedMessage.prefix(2_000))
+
+        try await pollIncidentStore.save(pollIncident: MailroomMailboxPollIncidentRecord(
+            id: UUID().uuidString,
+            mailboxID: account.id,
+            mailboxLabel: account.label,
+            mailboxEmailAddress: account.emailAddress,
+            phase: phase,
+            message: boundedMessage,
+            lastSeenUID: lastSeenUID,
+            retryAt: retryAt,
+            occurredAt: occurredAt,
+            resolvedAt: nil,
+            updatedAt: occurredAt
+        ))
+    }
+
+    func resolveMailboxPollIncidents(account: MailboxAccount, resolvedAt: Date = Date()) async throws {
+        try await pollIncidentStore.resolveOpenPollIncidents(accountID: account.id, resolvedAt: resolvedAt)
     }
 
     func noteRecentMailActivity(

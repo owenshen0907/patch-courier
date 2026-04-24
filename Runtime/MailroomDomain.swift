@@ -260,6 +260,12 @@ protocol MailboxMessageStore: Sendable {
     func recentMailboxMessages(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxMessageRecord]
 }
 
+protocol MailboxPollIncidentStore: Sendable {
+    func save(pollIncident: MailroomMailboxPollIncidentRecord) async throws
+    func resolveOpenPollIncidents(accountID: String, resolvedAt: Date) async throws
+    func recentPollIncidents(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxPollIncidentRecord]
+}
+
 protocol TurnStore: Sendable {
     func save(turn: MailroomTurnRecord) async throws
     func turn(id: String) async throws -> MailroomTurnRecord?

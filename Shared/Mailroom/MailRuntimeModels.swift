@@ -64,6 +64,20 @@ struct MailroomMailboxMessageRecord: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+struct MailroomMailboxPollIncidentRecord: Identifiable, Codable, Hashable, Sendable {
+    var id: String
+    var mailboxID: String
+    var mailboxLabel: String?
+    var mailboxEmailAddress: String?
+    var phase: String
+    var message: String
+    var lastSeenUID: UInt64?
+    var retryAt: Date?
+    var occurredAt: Date
+    var resolvedAt: Date?
+    var updatedAt: Date
+}
+
 struct OutboundMailMessage: Codable, Hashable, Sendable {
     var to: [String]
     var subject: String
