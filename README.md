@@ -1,7 +1,16 @@
+![Patch Courier banner](docs/assets/patch-courier-hero.svg)
+
 # Patch Courier
+
+[![Build](https://github.com/owenshen0907/patch-courier/actions/workflows/build.yml/badge.svg)](https://github.com/owenshen0907/patch-courier/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-E9A23B.svg)](LICENSE)
 
 Patch Courier lets you keep coding from wherever you are by turning trusted email threads into local Codex work.
 Email is the human-facing ingress, approval, and notification channel; execution stays on your Mac through `codex app-server`, so repository access, credentials, and policy decisions remain local.
+
+## Project status
+
+Patch Courier is an early, daemon-first macOS prototype. It is useful for experimentation and local operator workflows, but the public API, storage schema, and onboarding flow should still be treated as pre-1.0.
 
 ## What exists now
 
@@ -105,15 +114,20 @@ xcodebuild -project PatchCourier.xcodeproj -scheme MailroomDaemon -destination '
 xcodebuild -project PatchCourier.xcodeproj -scheme PatchCourierMac -destination 'platform=macOS' -derivedDataPath /tmp/PatchCourierDerived CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Next major milestones
+## Roadmap
 
-1. Tighten recovery semantics around reply threading and duplicate-notification suppression for crash-at-send edge cases.
-2. Add richer operator actions from the daemon console, such as replaying outcomes or inspecting artifacts per turn.
-3. Decide whether the daemon should expose first-class CLI commands for mailbox/sender-policy mutation in addition to the local JSON control plane.
-4. Add historical incident timelines for mailbox poll health so repeated transport flaps are easier to diagnose from the operator console.
+The next iteration plan lives in `docs/ROADMAP.md`. The short version is:
+
+1. Make daemon recovery and duplicate-notification behavior boringly reliable.
+2. Make first-run setup understandable enough for external contributors to reproduce.
+3. Expand operator controls for approvals, replay, artifacts, and mailbox health.
+4. Package signed releases once the core loop is stable.
 
 ## Docs
 
+- `docs/ROADMAP.md`
+- `docs/BRAND.md`
 - `docs/TARGET_ARCHITECTURE.md`
 - `docs/PLAN.md`
 - `docs/DESIGN.md`
+- `docs/releases/v0.1.0.md`
