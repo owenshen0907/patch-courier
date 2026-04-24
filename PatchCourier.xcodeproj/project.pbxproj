@@ -56,6 +56,7 @@
 		96E00559ECA8C934CD6BDFB5 /* MailroomModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4F0FD24167FBD4724B47194 /* MailroomModels.swift */; };
 		97C0ECD628A354F0D51DFF0E /* MailTransportClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CA9FB751AAABDFBB21BF718 /* MailTransportClient.swift */; };
 		99CCE41F36DFF68502480815 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEAC48C6CE4578EE4FADBF8 /* AppLocalization.swift */; };
+		9C8EF1FEABBBCCA79CF02261 /* SQLiteMailroomStoreMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2380368C358342C042B8994 /* SQLiteMailroomStoreMigrationTests.swift */; };
 		A190C6D1A7A95D2E2EA67F6B /* MailroomDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */; };
 		A26407F399043FDCB73ECFA0 /* PatchCourierMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798256FCEC32368CB30804D5 /* PatchCourierMacApp.swift */; };
 		A280F08FC184E6EBA804550A /* SenderPolicyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3126C7DF1423EA2525558F84 /* SenderPolicyStore.swift */; };
@@ -129,6 +130,7 @@
 		A7F5176A1BD279B0C6D7580C /* MailroomNotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomNotificationManager.swift; sourceTree = "<group>"; };
 		AE80478F25557FC706847A68 /* MailroomWorkspaceModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomWorkspaceModel.swift; sourceTree = "<group>"; };
 		B158FB5B16C5F7DEAAAD0E68 /* MailroomDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailroomDomain.swift; sourceTree = "<group>"; };
+		B2380368C358342C042B8994 /* SQLiteMailroomStoreMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteMailroomStoreMigrationTests.swift; sourceTree = "<group>"; };
 		B2B14346C8ACD337F0031B09 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B78F0A14A7E57F17B447AC59 /* ApprovalMailCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalMailCodecTests.swift; sourceTree = "<group>"; };
 		C5A0F369D5163558395DBD6F /* MailboxAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailboxAccountStore.swift; sourceTree = "<group>"; };
@@ -267,6 +269,7 @@
 				291CCAC084ED0FD51ACDF950 /* MailPreviewFixtureTests.swift */,
 				D8992D4664E47CDA553D28E9 /* MailroomMailParserTests.swift */,
 				01DBA3270A47F0F34A43AB4A /* MailroomTurnNotificationTests.swift */,
+				B2380368C358342C042B8994 /* SQLiteMailroomStoreMigrationTests.swift */,
 			);
 			path = MailroomDaemonTests;
 			sourceTree = "<group>";
@@ -486,6 +489,7 @@
 				781F52AEA97987BA7F99ECC1 /* MailroomPolicyModels.swift in Sources */,
 				D02BB94F59585A8E766D3C6B /* MailroomTurnNotificationTests.swift in Sources */,
 				96CE6889E8FC561E5419C727 /* SQLiteMailroomStore.swift in Sources */,
+				9C8EF1FEABBBCCA79CF02261 /* SQLiteMailroomStoreMigrationTests.swift in Sources */,
 				D338FE288FB849D9525211B3 /* SenderPolicyStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

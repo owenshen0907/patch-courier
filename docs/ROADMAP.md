@@ -14,6 +14,8 @@ This roadmap keeps the project practical. The immediate goal is not to support e
 
 ## v0.2 Reliability and recovery
 
+Status: implemented in `docs/releases/v0.2.0.md`.
+
 Goal: make the core loop boringly reliable across restarts, duplicate mail, and transport failures.
 
 - Tighten duplicate-notification suppression around crash-at-send and retry-after-send cases.

@@ -4,6 +4,8 @@ import SQLite3
 struct SQLiteMailroomStore: Sendable {
     let databasePath: String
 
+    static let currentSchemaVersion = 1
+
     private static let sqliteTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
     init(databasePath: String) throws {
@@ -1199,230 +1201,246 @@ private extension SQLiteMailroomStore {
     func migrateIfNeeded() throws {
         try withDatabase { database in
             try execute("PRAGMA journal_mode = WAL;", in: database)
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS mail_threads (
-                    id TEXT PRIMARY KEY,
-                    mailbox_id TEXT NOT NULL,
-                    normalized_sender TEXT NOT NULL,
-                    subject TEXT NOT NULL,
-                    codex_thread_id TEXT,
-                    workspace_root TEXT NOT NULL,
-                    capability TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    pending_stage TEXT,
-                    pending_prompt_body TEXT,
-                    managed_project_id TEXT,
-                    last_inbound_message_id TEXT,
-                    last_outbound_message_id TEXT,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try ensureColumn(
-                table: "mail_threads",
-                named: "pending_prompt_body",
-                definition: "TEXT",
-                in: database
-            )
-            try ensureColumn(
-                table: "mail_threads",
-                named: "pending_stage",
-                definition: "TEXT",
-                in: database
-            )
-            try ensureColumn(
-                table: "mail_threads",
-                named: "managed_project_id",
-                definition: "TEXT",
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS approval_requests (
-                    id TEXT PRIMARY KEY,
-                    rpc_id_kind TEXT NOT NULL,
-                    rpc_id_value TEXT NOT NULL,
-                    kind TEXT NOT NULL,
-                    mail_thread_token TEXT,
-                    codex_thread_id TEXT NOT NULL,
-                    codex_turn_id TEXT NOT NULL,
-                    item_id TEXT NOT NULL,
-                    summary TEXT NOT NULL,
-                    detail TEXT,
-                    available_decisions_json TEXT NOT NULL,
-                    raw_payload_json TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    resolved_decision TEXT,
-                    resolution_note TEXT,
-                    created_at REAL NOT NULL,
-                    resolved_at REAL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS event_log (
-                    id TEXT PRIMARY KEY,
-                    source TEXT NOT NULL,
-                    method TEXT NOT NULL,
-                    codex_thread_id TEXT,
-                    codex_turn_id TEXT,
-                    payload_json TEXT NOT NULL,
-                    created_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS mailbox_accounts (
-                    id TEXT PRIMARY KEY,
-                    label TEXT NOT NULL,
-                    email_address TEXT NOT NULL,
-                    role TEXT NOT NULL,
-                    workspace_root TEXT NOT NULL,
-                    imap_host TEXT NOT NULL,
-                    imap_port INTEGER NOT NULL,
-                    imap_security TEXT NOT NULL,
-                    smtp_host TEXT NOT NULL,
-                    smtp_port INTEGER NOT NULL,
-                    smtp_security TEXT NOT NULL,
-                    polling_interval_seconds INTEGER NOT NULL,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS sender_policies (
-                    id TEXT PRIMARY KEY,
-                    display_name TEXT NOT NULL,
-                    sender_address TEXT NOT NULL,
-                    assigned_role TEXT NOT NULL,
-                    allowed_workspace_roots_json TEXT NOT NULL,
-                    requires_reply_token INTEGER NOT NULL,
-                    is_enabled INTEGER NOT NULL,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS managed_projects (
-                    id TEXT PRIMARY KEY,
-                    display_name TEXT NOT NULL,
-                    slug TEXT NOT NULL,
-                    root_path TEXT NOT NULL,
-                    summary TEXT NOT NULL,
-                    default_capability TEXT NOT NULL,
-                    is_enabled INTEGER NOT NULL,
-                    created_at REAL NOT NULL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS mailbox_sync_state (
-                    account_id TEXT PRIMARY KEY,
-                    last_seen_uid INTEGER,
-                    last_processed_at REAL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS mail_messages (
-                    id TEXT PRIMARY KEY,
-                    mailbox_id TEXT NOT NULL,
-                    uid INTEGER NOT NULL,
-                    message_id TEXT NOT NULL,
-                    from_address TEXT NOT NULL,
-                    from_display_name TEXT,
-                    subject TEXT NOT NULL,
-                    plain_body TEXT NOT NULL,
-                    received_at REAL NOT NULL,
-                    in_reply_to TEXT,
-                    references_json TEXT NOT NULL,
-                    thread_token TEXT,
-                    action TEXT NOT NULL,
-                    outbound_message_id TEXT,
-                    note TEXT NOT NULL,
-                    processed_at REAL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS mailbox_poll_incidents (
-                    id TEXT PRIMARY KEY,
-                    mailbox_id TEXT NOT NULL,
-                    phase TEXT NOT NULL,
-                    message TEXT NOT NULL,
-                    last_seen_uid INTEGER,
-                    retry_at REAL,
-                    occurred_at REAL NOT NULL,
-                    resolved_at REAL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try execute(
-                """
-                CREATE TABLE IF NOT EXISTS codex_turns (
-                    id TEXT PRIMARY KEY,
-                    mail_thread_token TEXT,
-                    codex_thread_id TEXT NOT NULL,
-                    origin TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    prompt_preview TEXT,
-                    last_notified_state TEXT,
-                    last_notified_approval_id TEXT,
-                    last_notification_message_id TEXT,
-                    started_at REAL NOT NULL,
-                    completed_at REAL,
-                    updated_at REAL NOT NULL
-                );
-                """,
-                in: database
-            )
-            try ensureColumn(
-                table: "codex_turns",
-                named: "last_notified_approval_id",
-                definition: "TEXT",
-                in: database
-            )
-            try execute("CREATE INDEX IF NOT EXISTS idx_mail_threads_updated_at ON mail_threads(updated_at DESC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mail_threads_codex_thread_id ON mail_threads(codex_thread_id);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_accounts_label ON mailbox_accounts(label COLLATE NOCASE);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_accounts_email ON mailbox_accounts(email_address COLLATE NOCASE);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_sender_policies_sender ON sender_policies(sender_address COLLATE NOCASE);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_managed_projects_slug ON managed_projects(slug COLLATE NOCASE);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_managed_projects_root_path ON managed_projects(root_path COLLATE NOCASE);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_approval_requests_created_at ON approval_requests(created_at DESC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_event_log_created_at ON event_log(created_at ASC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_status ON codex_turns(status);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_thread_id ON codex_turns(codex_thread_id);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_mail_thread_token ON codex_turns(mail_thread_token);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_mailbox_received_at ON mail_messages(mailbox_id, received_at DESC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_received_at ON mail_messages(received_at DESC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_message_id ON mail_messages(message_id);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_mailbox_occurred ON mailbox_poll_incidents(mailbox_id, occurred_at DESC);", in: database)
-            try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_open ON mailbox_poll_incidents(mailbox_id, resolved_at);", in: database)
+            let schemaVersion = try currentUserVersion(in: database)
+            guard schemaVersion <= Self.currentSchemaVersion else {
+                throw SQLiteMailroomStoreError.unsupportedSchemaVersion(
+                    existing: schemaVersion,
+                    supported: Self.currentSchemaVersion
+                )
+            }
+
+            try execute("BEGIN IMMEDIATE TRANSACTION;", in: database)
+            do {
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mail_threads (
+                        id TEXT PRIMARY KEY,
+                        mailbox_id TEXT NOT NULL,
+                        normalized_sender TEXT NOT NULL,
+                        subject TEXT NOT NULL,
+                        codex_thread_id TEXT,
+                        workspace_root TEXT NOT NULL,
+                        capability TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        pending_stage TEXT,
+                        pending_prompt_body TEXT,
+                        managed_project_id TEXT,
+                        last_inbound_message_id TEXT,
+                        last_outbound_message_id TEXT,
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try ensureColumn(
+                    table: "mail_threads",
+                    named: "pending_prompt_body",
+                    definition: "TEXT",
+                    in: database
+                )
+                try ensureColumn(
+                    table: "mail_threads",
+                    named: "pending_stage",
+                    definition: "TEXT",
+                    in: database
+                )
+                try ensureColumn(
+                    table: "mail_threads",
+                    named: "managed_project_id",
+                    definition: "TEXT",
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS approval_requests (
+                        id TEXT PRIMARY KEY,
+                        rpc_id_kind TEXT NOT NULL,
+                        rpc_id_value TEXT NOT NULL,
+                        kind TEXT NOT NULL,
+                        mail_thread_token TEXT,
+                        codex_thread_id TEXT NOT NULL,
+                        codex_turn_id TEXT NOT NULL,
+                        item_id TEXT NOT NULL,
+                        summary TEXT NOT NULL,
+                        detail TEXT,
+                        available_decisions_json TEXT NOT NULL,
+                        raw_payload_json TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        resolved_decision TEXT,
+                        resolution_note TEXT,
+                        created_at REAL NOT NULL,
+                        resolved_at REAL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS event_log (
+                        id TEXT PRIMARY KEY,
+                        source TEXT NOT NULL,
+                        method TEXT NOT NULL,
+                        codex_thread_id TEXT,
+                        codex_turn_id TEXT,
+                        payload_json TEXT NOT NULL,
+                        created_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mailbox_accounts (
+                        id TEXT PRIMARY KEY,
+                        label TEXT NOT NULL,
+                        email_address TEXT NOT NULL,
+                        role TEXT NOT NULL,
+                        workspace_root TEXT NOT NULL,
+                        imap_host TEXT NOT NULL,
+                        imap_port INTEGER NOT NULL,
+                        imap_security TEXT NOT NULL,
+                        smtp_host TEXT NOT NULL,
+                        smtp_port INTEGER NOT NULL,
+                        smtp_security TEXT NOT NULL,
+                        polling_interval_seconds INTEGER NOT NULL,
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS sender_policies (
+                        id TEXT PRIMARY KEY,
+                        display_name TEXT NOT NULL,
+                        sender_address TEXT NOT NULL,
+                        assigned_role TEXT NOT NULL,
+                        allowed_workspace_roots_json TEXT NOT NULL,
+                        requires_reply_token INTEGER NOT NULL,
+                        is_enabled INTEGER NOT NULL,
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS managed_projects (
+                        id TEXT PRIMARY KEY,
+                        display_name TEXT NOT NULL,
+                        slug TEXT NOT NULL,
+                        root_path TEXT NOT NULL,
+                        summary TEXT NOT NULL,
+                        default_capability TEXT NOT NULL,
+                        is_enabled INTEGER NOT NULL,
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mailbox_sync_state (
+                        account_id TEXT PRIMARY KEY,
+                        last_seen_uid INTEGER,
+                        last_processed_at REAL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mail_messages (
+                        id TEXT PRIMARY KEY,
+                        mailbox_id TEXT NOT NULL,
+                        uid INTEGER NOT NULL,
+                        message_id TEXT NOT NULL,
+                        from_address TEXT NOT NULL,
+                        from_display_name TEXT,
+                        subject TEXT NOT NULL,
+                        plain_body TEXT NOT NULL,
+                        received_at REAL NOT NULL,
+                        in_reply_to TEXT,
+                        references_json TEXT NOT NULL,
+                        thread_token TEXT,
+                        action TEXT NOT NULL,
+                        outbound_message_id TEXT,
+                        note TEXT NOT NULL,
+                        processed_at REAL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS mailbox_poll_incidents (
+                        id TEXT PRIMARY KEY,
+                        mailbox_id TEXT NOT NULL,
+                        phase TEXT NOT NULL,
+                        message TEXT NOT NULL,
+                        last_seen_uid INTEGER,
+                        retry_at REAL,
+                        occurred_at REAL NOT NULL,
+                        resolved_at REAL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS codex_turns (
+                        id TEXT PRIMARY KEY,
+                        mail_thread_token TEXT,
+                        codex_thread_id TEXT NOT NULL,
+                        origin TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        prompt_preview TEXT,
+                        last_notified_state TEXT,
+                        last_notified_approval_id TEXT,
+                        last_notification_message_id TEXT,
+                        started_at REAL NOT NULL,
+                        completed_at REAL,
+                        updated_at REAL NOT NULL
+                    );
+                    """,
+                    in: database
+                )
+                try ensureColumn(
+                    table: "codex_turns",
+                    named: "last_notified_approval_id",
+                    definition: "TEXT",
+                    in: database
+                )
+                try execute("CREATE INDEX IF NOT EXISTS idx_mail_threads_updated_at ON mail_threads(updated_at DESC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mail_threads_codex_thread_id ON mail_threads(codex_thread_id);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_accounts_label ON mailbox_accounts(label COLLATE NOCASE);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_accounts_email ON mailbox_accounts(email_address COLLATE NOCASE);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_sender_policies_sender ON sender_policies(sender_address COLLATE NOCASE);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_managed_projects_slug ON managed_projects(slug COLLATE NOCASE);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_managed_projects_root_path ON managed_projects(root_path COLLATE NOCASE);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_approval_requests_created_at ON approval_requests(created_at DESC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_approval_requests_status ON approval_requests(status);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_event_log_created_at ON event_log(created_at ASC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_status ON codex_turns(status);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_thread_id ON codex_turns(codex_thread_id);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_codex_turns_mail_thread_token ON codex_turns(mail_thread_token);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_mailbox_received_at ON mail_messages(mailbox_id, received_at DESC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_received_at ON mail_messages(received_at DESC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mail_messages_message_id ON mail_messages(message_id);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_mailbox_occurred ON mailbox_poll_incidents(mailbox_id, occurred_at DESC);", in: database)
+                try execute("CREATE INDEX IF NOT EXISTS idx_mailbox_poll_incidents_open ON mailbox_poll_incidents(mailbox_id, resolved_at);", in: database)
+                try setUserVersion(Self.currentSchemaVersion, in: database)
+                try execute("COMMIT;", in: database)
+            } catch {
+                try? execute("ROLLBACK;", in: database)
+                throw error
+            }
         }
     }
 
@@ -1459,6 +1477,20 @@ private extension SQLiteMailroomStore {
             sqlite3_free(errorMessage)
             throw SQLiteMailroomStoreError.statementFailed(message)
         }
+    }
+
+    func currentUserVersion(in database: OpaquePointer?) throws -> Int {
+        let statement = try prepare("PRAGMA user_version;", in: database)
+        defer { sqlite3_finalize(statement) }
+
+        guard sqlite3_step(statement) == SQLITE_ROW else {
+            throw SQLiteMailroomStoreError.statementFailed(message(from: database))
+        }
+        return Int(sqlite3_column_int(statement, 0))
+    }
+
+    func setUserVersion(_ version: Int, in database: OpaquePointer?) throws {
+        try execute("PRAGMA user_version = \(version);", in: database)
     }
 
     func bind(_ value: String?, at index: Int32, in statement: OpaquePointer?) {
@@ -1744,6 +1776,7 @@ enum SQLiteMailroomStoreError: LocalizedError, Sendable {
     case openFailed(String)
     case statementFailed(String)
     case decodeFailed(String)
+    case unsupportedSchemaVersion(existing: Int, supported: Int)
 
     var errorDescription: String? {
         switch self {
@@ -1753,6 +1786,8 @@ enum SQLiteMailroomStoreError: LocalizedError, Sendable {
             return "SQLite could not complete the requested Mailroom operation: \(message)"
         case .decodeFailed(let message):
             return "Stored Mailroom data could not be decoded: \(message)"
+        case .unsupportedSchemaVersion(let existing, let supported):
+            return "Mailroom SQLite schema version \(existing) is newer than supported version \(supported)."
         }
     }
 }
