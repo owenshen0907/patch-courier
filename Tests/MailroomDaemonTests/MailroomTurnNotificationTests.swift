@@ -127,11 +127,65 @@ final class MailroomTurnNotificationTests: XCTestCase {
         XCTAssertEqual(events.first?.method, "turn/recovery/timeout")
     }
 
+    func testMailboxReplaySkipsPersistedProcessedMessage() async throws {
+        let mailboxMessageStore = InMemoryMailboxMessageStore()
+        let daemon = makeDaemon(
+            turnStore: InMemoryTurnStore(),
+            approvalStore: InMemoryApprovalStore(),
+            mailboxMessageStore: mailboxMessageStore
+        )
+        let account = makeMailboxAccount()
+        let message = makeInboundMessage()
+        let record = makeMailboxMessageRecord(
+            account: account,
+            message: message,
+            action: .completed,
+            processedAt: Date(timeIntervalSince1970: 30)
+        )
+
+        try await mailboxMessageStore.save(mailboxMessage: record)
+
+        let decision = try await daemon.mailboxReplayDecision(account: account, message: message)
+        switch decision {
+        case .process:
+            XCTFail("Expected replayed processed message to be skipped")
+        case .skip(let result):
+            XCTAssertEqual(result.uid, message.uid)
+            XCTAssertEqual(result.messageID, message.messageID)
+            XCTAssertEqual(result.action, .completed)
+            XCTAssertEqual(result.threadToken, "MRM-1")
+            XCTAssertEqual(result.outboundMessageID, "outbound-1")
+        }
+    }
+
+    func testMailboxReplayProcessesUnfinishedReceivedMessage() async throws {
+        let mailboxMessageStore = InMemoryMailboxMessageStore()
+        let daemon = makeDaemon(
+            turnStore: InMemoryTurnStore(),
+            approvalStore: InMemoryApprovalStore(),
+            mailboxMessageStore: mailboxMessageStore
+        )
+        let account = makeMailboxAccount()
+        let message = makeInboundMessage()
+        let record = makeMailboxMessageRecord(
+            account: account,
+            message: message,
+            action: .received,
+            processedAt: nil
+        )
+
+        try await mailboxMessageStore.save(mailboxMessage: record)
+
+        let decision = try await daemon.mailboxReplayDecision(account: account, message: message)
+        XCTAssertEqual(decision, .process)
+    }
+
     private func makeDaemon(
         threadStore: ThreadStore = InMemoryThreadStore(),
         turnStore: TurnStore,
         approvalStore: ApprovalStore,
         eventStore: EventStore = InMemoryEventStore(),
+        mailboxMessageStore: MailboxMessageStore = InMemoryMailboxMessageStore(),
         configure: (inout MailroomDaemonConfiguration) -> Void = { _ in }
     ) -> MailroomDaemon {
         var configuration = MailroomDaemonConfiguration.default()
@@ -153,10 +207,68 @@ final class MailroomTurnNotificationTests: XCTestCase {
             approvalStore: approvalStore,
             eventStore: eventStore,
             syncStore: InMemoryMailboxSyncStore(),
-            mailboxMessageStore: InMemoryMailboxMessageStore(),
+            mailboxMessageStore: mailboxMessageStore,
             accountStore: InMemoryMailboxAccountConfigStore(),
             senderPolicyStore: InMemorySenderPolicyConfigStore(),
             managedProjectStore: InMemoryManagedProjectConfigStore()
+        )
+    }
+
+    private func makeMailboxAccount() -> MailboxAccount {
+        MailboxAccount(
+            id: "mailbox-1",
+            label: "Operator",
+            emailAddress: "operator@example.com",
+            role: .operator,
+            workspaceRoot: "/tmp/project",
+            imap: MailServerEndpoint(host: "imap.example.com", port: 993, security: .sslTLS),
+            smtp: MailServerEndpoint(host: "smtp.example.com", port: 465, security: .sslTLS),
+            pollingIntervalSeconds: 60,
+            createdAt: Date(timeIntervalSince1970: 0),
+            updatedAt: Date(timeIntervalSince1970: 1)
+        )
+    }
+
+    private func makeInboundMessage() -> InboundMailMessage {
+        InboundMailMessage(
+            uid: 42,
+            messageID: "message-42",
+            fromAddress: "ops@example.com",
+            fromDisplayName: "Ops",
+            subject: "Ship",
+            plainBody: "Continue",
+            receivedAt: Date(timeIntervalSince1970: 10),
+            inReplyTo: nil,
+            references: []
+        )
+    }
+
+    private func makeMailboxMessageRecord(
+        account: MailboxAccount,
+        message: InboundMailMessage,
+        action: MailroomMailboxMessageAction,
+        processedAt: Date?
+    ) -> MailroomMailboxMessageRecord {
+        MailroomMailboxMessageRecord(
+            id: MailroomMailboxMessageRecord.makeID(mailboxID: account.id, uid: message.uid),
+            mailboxID: account.id,
+            mailboxLabel: account.label,
+            mailboxEmailAddress: account.emailAddress,
+            uid: message.uid,
+            messageID: message.messageID,
+            fromAddress: message.fromAddress,
+            fromDisplayName: message.fromDisplayName,
+            subject: message.subject,
+            plainBody: message.plainBody,
+            receivedAt: message.receivedAt,
+            inReplyTo: message.inReplyTo,
+            references: message.references,
+            threadToken: "MRM-1",
+            action: action,
+            outboundMessageID: action == .received ? nil : "outbound-1",
+            note: "Processed once.",
+            processedAt: processedAt,
+            updatedAt: Date(timeIntervalSince1970: 40)
         )
     }
 

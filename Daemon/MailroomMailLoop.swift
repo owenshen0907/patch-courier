@@ -30,6 +30,11 @@ struct MailroomMailboxSyncRunReport: Codable, Hashable, Sendable {
     var accountReports: [MailroomMailboxSyncReport]
 }
 
+enum MailboxMessageReplayDecision: Equatable, Sendable {
+    case process
+    case skip(MailroomMailboxMessageResult)
+}
+
 enum MailroomEmailHTML {
     static let contentMarker = "<!--MAILROOM-CONTENT-START-->"
 
@@ -594,15 +599,36 @@ extension MailroomDaemon {
             )
             let processedAt = Date()
             var queuedCount = 0
+            var seenMailboxMessageIDs = Set<String>()
 
             if fetchResult.didBootstrap {
                 for message in fetchResult.messages.sorted(by: { $0.uid < $1.uid }) {
+                    guard seenMailboxMessageIDs.insert(mailboxMessageRecordID(account: account, message: message)).inserted else {
+                        continue
+                    }
+                    switch try await mailboxReplayDecision(account: account, message: message) {
+                    case .process:
+                        break
+                    case .skip(let result):
+                        noteRecentMailActivity(account: account, message: message, result: result)
+                        continue
+                    }
                     let result = try await historicalMessageResult(for: message, account: account)
                     try await persistMailboxMessage(account: account, message: message, result: result)
                     noteRecentMailActivity(account: account, message: message, result: result)
                 }
             } else {
                 for message in fetchResult.messages.sorted(by: { $0.uid < $1.uid }) {
+                    guard seenMailboxMessageIDs.insert(mailboxMessageRecordID(account: account, message: message)).inserted else {
+                        continue
+                    }
+                    switch try await mailboxReplayDecision(account: account, message: message) {
+                    case .process:
+                        break
+                    case .skip(let result):
+                        noteRecentMailActivity(account: account, message: message, result: result)
+                        continue
+                    }
                     try await persistMailboxMessage(
                         account: account,
                         message: message,
@@ -781,8 +807,20 @@ extension MailroomDaemon {
             if fetchResult.didBootstrap {
                 let historicalMessages = fetchResult.messages.sorted(by: { $0.uid < $1.uid })
                 var historicalResults: [MailroomMailboxMessageResult] = []
+                var seenMailboxMessageIDs = Set<String>()
                 historicalResults.reserveCapacity(historicalMessages.count)
                 for message in historicalMessages {
+                    guard seenMailboxMessageIDs.insert(mailboxMessageRecordID(account: account, message: message)).inserted else {
+                        continue
+                    }
+                    switch try await mailboxReplayDecision(account: account, message: message) {
+                    case .process:
+                        break
+                    case .skip(let result):
+                        historicalResults.append(result)
+                        noteRecentMailActivity(account: account, message: message, result: result)
+                        continue
+                    }
                     let result = try await historicalMessageResult(for: message, account: account)
                     historicalResults.append(result)
                     try await persistMailboxMessage(account: account, message: message, result: result)
@@ -814,10 +852,23 @@ extension MailroomDaemon {
             }
 
             var results: [MailroomMailboxMessageResult] = []
+            var seenMailboxMessageIDs = Set<String>()
+            var processedCount = 0
             var ignoredCount = 0
             var sentCount = 0
 
             for message in fetchResult.messages.sorted(by: { $0.uid < $1.uid }) {
+                guard seenMailboxMessageIDs.insert(mailboxMessageRecordID(account: account, message: message)).inserted else {
+                    continue
+                }
+                switch try await mailboxReplayDecision(account: account, message: message) {
+                case .process:
+                    break
+                case .skip(let result):
+                    results.append(result)
+                    noteRecentMailActivity(account: account, message: message, result: result)
+                    continue
+                }
                 let result = try await processMessage(
                     message,
                     account: account,
@@ -829,6 +880,8 @@ extension MailroomDaemon {
                 noteRecentMailActivity(account: account, message: message, result: result)
                 if result.action == .ignored {
                     ignoredCount += 1
+                } else {
+                    processedCount += 1
                 }
                 if result.outboundMessageID != nil {
                     sentCount += 1
@@ -843,7 +896,7 @@ extension MailroomDaemon {
             noteMailboxPollSucceeded(
                 account: account,
                 fetchedCount: fetchResult.messages.count,
-                queuedCount: results.count - ignoredCount,
+                queuedCount: processedCount,
                 didBootstrap: false
             )
 
@@ -852,7 +905,7 @@ extension MailroomDaemon {
                 emailAddress: account.emailAddress,
                 didBootstrap: false,
                 fetchedCount: fetchResult.messages.count,
-                processedCount: results.count - ignoredCount,
+                processedCount: processedCount,
                 ignoredCount: ignoredCount,
                 sentCount: sentCount,
                 lastSeenUID: fetchResult.lastUID,
@@ -885,6 +938,56 @@ extension MailroomDaemon {
             let result = try await historicalMessageResult(for: message, account: account)
             try await persistMailboxMessage(account: account, message: message, result: result)
         }
+    }
+
+    func mailboxReplayDecision(
+        account: MailboxAccount,
+        message: InboundMailMessage
+    ) async throws -> MailboxMessageReplayDecision {
+        guard let record = try await mailboxMessageStore.mailboxMessage(mailboxID: account.id, uid: message.uid) else {
+            return .process
+        }
+
+        if record.action == .received && record.processedAt == nil {
+            if mailboxMessageIsQueuedOrActive(accountID: account.id, uid: message.uid, messageID: message.messageID) {
+                return .skip(mailboxMessageResult(from: record))
+            }
+            return .process
+        }
+
+        return .skip(mailboxMessageResult(from: record))
+    }
+
+    private func mailboxMessageRecordID(account: MailboxAccount, message: InboundMailMessage) -> String {
+        MailroomMailboxMessageRecord.makeID(mailboxID: account.id, uid: message.uid)
+    }
+
+    private func mailboxMessageIsQueuedOrActive(accountID: String, uid: UInt64, messageID: String) -> Bool {
+        let isQueued = queuedMailWorkByWorkerKey.values.contains { queue in
+            queue.contains { workItem in
+                workItem.account.id == accountID && workItem.message.uid == uid
+            }
+        }
+        if isQueued {
+            return true
+        }
+
+        return mailWorkerStates.values.contains { state in
+            state.mailboxID == accountID && state.currentMessageID == messageID
+        }
+    }
+
+    private func mailboxMessageResult(from record: MailroomMailboxMessageRecord) -> MailroomMailboxMessageResult {
+        MailroomMailboxMessageResult(
+            uid: record.uid,
+            messageID: record.messageID,
+            sender: record.fromAddress,
+            subject: record.subject,
+            action: record.action,
+            threadToken: record.threadToken,
+            outboundMessageID: record.outboundMessageID,
+            note: record.note
+        )
     }
 
     private func queuedMessageResult(for message: InboundMailMessage) -> MailroomMailboxMessageResult {

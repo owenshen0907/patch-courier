@@ -530,6 +530,47 @@ extension SQLiteMailroomStore: MailboxMessageStore {
         }
     }
 
+    func mailboxMessage(mailboxID: String, uid: UInt64) async throws -> MailroomMailboxMessageRecord? {
+        try withDatabase { database in
+            let sql = """
+            SELECT
+                messages.id,
+                messages.mailbox_id,
+                accounts.label,
+                accounts.email_address,
+                messages.uid,
+                messages.message_id,
+                messages.from_address,
+                messages.from_display_name,
+                messages.subject,
+                messages.plain_body,
+                messages.received_at,
+                messages.in_reply_to,
+                messages.references_json,
+                messages.thread_token,
+                messages.action,
+                messages.outbound_message_id,
+                messages.note,
+                messages.processed_at,
+                messages.updated_at
+            FROM mail_messages AS messages
+            LEFT JOIN mailbox_accounts AS accounts
+                ON accounts.id = messages.mailbox_id
+            WHERE messages.id = ?
+            LIMIT 1;
+            """
+
+            let statement = try prepare(sql, in: database)
+            defer { sqlite3_finalize(statement) }
+            bind(MailroomMailboxMessageRecord.makeID(mailboxID: mailboxID, uid: uid), at: 1, in: statement)
+
+            guard sqlite3_step(statement) == SQLITE_ROW else {
+                return nil
+            }
+            return try decodeMailboxMessage(from: statement)
+        }
+    }
+
     func recentMailboxMessages(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxMessageRecord] {
         guard limit > 0 else {
             return []

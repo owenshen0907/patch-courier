@@ -78,6 +78,10 @@ actor InMemoryMailboxMessageStore: MailboxMessageStore {
         messagesByID[mailboxMessage.id] = mailboxMessage
     }
 
+    func mailboxMessage(mailboxID: String, uid: UInt64) async throws -> MailroomMailboxMessageRecord? {
+        messagesByID[MailroomMailboxMessageRecord.makeID(mailboxID: mailboxID, uid: uid)]
+    }
+
     func recentMailboxMessages(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxMessageRecord] {
         let filtered = messagesByID.values
             .filter { record in
