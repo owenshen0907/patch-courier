@@ -16,6 +16,8 @@ struct MailroomDaemonConfiguration: Sendable {
     var defaultApprovalPolicy: CodexApprovalPolicy
     var clientInfo: ClientInfo
     var additionalEnvironment: [String: String]
+    var activeTurnRecoveryPollingIntervalSeconds: Int
+    var activeTurnRecoveryTimeoutSeconds: Int
 
     static func `default`() -> MailroomDaemonConfiguration {
         let environment = ProcessInfo.processInfo.environment
@@ -52,8 +54,26 @@ struct MailroomDaemonConfiguration: Sendable {
             defaultSandbox: .workspaceWrite,
             defaultApprovalPolicy: .onRequest,
             clientInfo: ClientInfo(name: "mailroomd", version: "0.2.0", title: "Patch Courier Daemon"),
-            additionalEnvironment: [:]
+            additionalEnvironment: [:],
+            activeTurnRecoveryPollingIntervalSeconds: Self.environmentInt(
+                "MAILROOM_ACTIVE_TURN_RECOVERY_POLL_SECONDS",
+                defaultValue: 30,
+                minimumValue: 1
+            ),
+            activeTurnRecoveryTimeoutSeconds: Self.environmentInt(
+                "MAILROOM_ACTIVE_TURN_RECOVERY_TIMEOUT_SECONDS",
+                defaultValue: 21_600,
+                minimumValue: 60
+            )
         )
+    }
+
+    static func environmentInt(_ key: String, defaultValue: Int, minimumValue: Int) -> Int {
+        guard let rawValue = ProcessInfo.processInfo.environment[key],
+              let value = Int(rawValue.trimmingCharacters(in: .whitespacesAndNewlines)) else {
+            return defaultValue
+        }
+        return max(value, minimumValue)
     }
 
     func makeTransportConfiguration() -> CodexAppServerTransport.Configuration {
@@ -119,6 +139,10 @@ private struct PendingTurnWaiter {
 }
 
 actor MailroomDaemon {
+    nonisolated static func iso8601String(from date: Date) -> String {
+        ISO8601DateFormatter().string(from: date)
+    }
+
     struct ProbeSummary: Codable, Hashable, Sendable {
         var supportRoot: String
         var databasePath: String
@@ -1358,6 +1382,11 @@ actor MailroomDaemon {
             return
         }
         turn.status = status
+        if status == .active {
+            turn.lastNotifiedState = nil
+            turn.lastNotifiedApprovalID = nil
+            turn.lastNotificationMessageID = nil
+        }
         if let completedAt {
             turn.completedAt = completedAt
         } else if !status.isTerminal {
@@ -1373,6 +1402,11 @@ actor MailroomDaemon {
             id: outcome.turnID,
             status: status,
             completedAt: status.isTerminal ? Date() : nil
+        )
+        try await transitionThread(
+            mailThreadToken: outcome.mailThreadToken,
+            codexThreadID: outcome.codexThreadID,
+            status: threadStatus(for: outcome.state)
         )
     }
 
@@ -1406,6 +1440,19 @@ actor MailroomDaemon {
             return .failed
         case .systemError:
             return .systemError
+        }
+    }
+
+    func threadStatus(for state: MailroomTurnOutcomeState) -> MailroomThreadStatus {
+        switch state {
+        case .completed:
+            return .completed
+        case .waitingOnApproval:
+            return .waitingOnApproval
+        case .waitingOnUserInput:
+            return .waitingOnUser
+        case .failed, .systemError:
+            return .failed
         }
     }
 
@@ -1722,6 +1769,20 @@ actor MailroomDaemon {
         thread.status = status
         thread.updatedAt = Date()
         try await threadStore.save(thread: thread)
+    }
+
+    private func transitionThread(
+        mailThreadToken: String?,
+        codexThreadID: String?,
+        status: MailroomThreadStatus
+    ) async throws {
+        if let mailThreadToken, var thread = try await threadStore.thread(token: mailThreadToken) {
+            thread.status = status
+            thread.updatedAt = Date()
+            try await threadStore.save(thread: thread)
+            return
+        }
+        try await transitionThread(codexThreadID: codexThreadID, status: status)
     }
 
     private func allowedDecisions(for approval: MailroomApprovalRequest, fallback: [String]) -> [String] {

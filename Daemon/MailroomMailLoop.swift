@@ -431,11 +431,7 @@ extension MailroomDaemon {
 
     private func monitorRecoveredMailTurn(_ turn: MailroomTurnRecord) async {
         do {
-            let outcome = try await waitForTurnOutcome(
-                codexThreadID: turn.codexThreadID,
-                turnID: turn.id,
-                mailThreadToken: turn.mailThreadToken
-            )
+            let outcome = try await waitForRecoveredTurnOutcome(turn)
             let refreshedTurn = try await turnStore.turn(id: turn.id) ?? turn
             try await dispatchRecoveredOutcomeIfNeeded(turn: refreshedTurn, outcome: outcome)
         } catch is CancellationError {
@@ -443,6 +439,89 @@ extension MailroomDaemon {
         } catch {
             print("mailroomd turn recovery error [\(turn.id)]: \(error.localizedDescription)")
         }
+    }
+
+    func waitForRecoveredTurnOutcome(_ turn: MailroomTurnRecord) async throws -> MailroomTurnOutcome {
+        _ = try await boot()
+
+        while true {
+            if let outcome = try await currentTurnOutcome(
+                codexThreadID: turn.codexThreadID,
+                turnID: turn.id,
+                mailThreadToken: turn.mailThreadToken
+            ) {
+                try await persistOutcome(outcome)
+                return outcome
+            }
+
+            if recoveredTurnHasTimedOut(turn, now: Date()) {
+                return try await markRecoveredTurnTimedOut(turn)
+            }
+
+            try await Task.sleep(for: .seconds(recoveredTurnPollingDelaySeconds(for: turn, now: Date())))
+        }
+    }
+
+    func recoveredTurnHasTimedOut(_ turn: MailroomTurnRecord, now: Date) -> Bool {
+        now >= recoveredTurnDeadline(for: turn)
+    }
+
+    func recoveredTurnDeadline(for turn: MailroomTurnRecord) -> Date {
+        turn.startedAt.addingTimeInterval(TimeInterval(configuration.activeTurnRecoveryTimeoutSeconds))
+    }
+
+    func recoveredTurnPollingDelaySeconds(for turn: MailroomTurnRecord, now: Date) -> Int {
+        let secondsUntilDeadline = max(1, Int(ceil(recoveredTurnDeadline(for: turn).timeIntervalSince(now))))
+        return min(configuration.activeTurnRecoveryPollingIntervalSeconds, secondsUntilDeadline)
+    }
+
+    func markRecoveredTurnTimedOut(_ turn: MailroomTurnRecord, now: Date = Date()) async throws -> MailroomTurnOutcome {
+        let timeoutSeconds = configuration.activeTurnRecoveryTimeoutSeconds
+        let outcome = MailroomTurnOutcome(
+            state: .systemError,
+            mailThreadToken: turn.mailThreadToken,
+            codexThreadID: turn.codexThreadID,
+            turnID: turn.id,
+            finalAnswer: LT(
+                "Patch Courier could not recover this active Codex turn before the recovery timeout. Please check the local daemon logs and resend the request if the task still matters.",
+                "Patch Courier 未能在恢复超时时间内恢复这个活跃 Codex turn。请检查本机 daemon 日志；如果任务仍然需要处理，请重新发送请求。",
+                "Patch Courier は復旧タイムアウト内にこのアクティブな Codex turn を復旧できませんでした。ローカル daemon ログを確認し、必要なら依頼を再送してください。"
+            ),
+            approvalID: nil,
+            approvalKind: nil,
+            approvalSummary: nil,
+            turnStatus: .object([
+                "status": .string(turn.status.rawValue),
+                "startedAt": .string(Self.iso8601String(from: turn.startedAt)),
+                "updatedAt": .string(Self.iso8601String(from: turn.updatedAt))
+            ]),
+            threadStatus: .object([
+                "reason": .string("active_turn_recovery_timeout"),
+                "timeoutSeconds": .number(Double(timeoutSeconds)),
+                "timedOutAt": .string(Self.iso8601String(from: now))
+            ]),
+            turnError: .object([
+                "message": .string("Active turn recovery timed out."),
+                "timeoutSeconds": .number(Double(timeoutSeconds))
+            ])
+        )
+
+        try await eventStore.append(event: MailroomEventRecord(
+            id: UUID().uuidString,
+            source: "mailroom_internal",
+            method: "turn/recovery/timeout",
+            codexThreadID: turn.codexThreadID,
+            codexTurnID: turn.id,
+            payload: .object([
+                "mailThreadToken": turn.mailThreadToken.map(JSONValue.string) ?? .null,
+                "timeoutSeconds": .number(Double(timeoutSeconds)),
+                "startedAt": .string(Self.iso8601String(from: turn.startedAt)),
+                "timedOutAt": .string(Self.iso8601String(from: now))
+            ]),
+            createdAt: now
+        ))
+        try await persistOutcome(outcome)
+        return outcome
     }
 
     private func dispatchRecoveredOutcomeIfNeeded(turn: MailroomTurnRecord, outcome: MailroomTurnOutcome) async throws {

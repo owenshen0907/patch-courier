@@ -25,6 +25,7 @@ Goal: make the core loop boringly reliable across restarts, duplicate mail, and 
 Exit criteria:
 
 - Restarting the daemon during pending approval does not duplicate the approval email.
+- Restarting the daemon with a stale active turn eventually records a visible timeout instead of leaving the turn active forever.
 - Replaying a mailbox sync does not enqueue the same inbound message twice.
 - A transport failure is visible in the app with enough detail to diagnose it.
 

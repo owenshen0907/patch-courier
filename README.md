@@ -20,7 +20,7 @@ Patch Courier is an early, daemon-first macOS prototype. It is useful for experi
 - turn records are now persisted in the same SQLite store, including origin, latest lifecycle state, and the last mail outcome already notified.
 - mailbox sync cursors, mailbox accounts, and sender policies now live in the same SQLite store, while mailbox passwords remain in Keychain.
 - `mailroomd` can now run one-shot mailbox syncs or a long-lived mail loop that polls mailboxes quickly, fans work out to per-thread background workers, and sends completion / approval emails back out.
-- the long-lived daemon now performs best-effort startup recovery for durable mail turns so pending approvals and unfinished mail-driven turns can be reconciled after restart.
+- the long-lived daemon now performs startup recovery for durable mail turns, suppresses already-sent approval reminders, and marks unrecoverable active turns as timed-out system errors instead of waiting forever.
 - the long-lived daemon now exposes a localhost JSON control plane, publishes a control file under the support root, and can answer live `state/read`, `approval/resolve`, and daemon-owned config mutation requests.
 - the macOS app now polls that daemon control plane to show live threads / turns / approvals, and saves mailbox / sender-policy changes against the same running daemon session.
 - the daemon control snapshot now includes per-lane worker summaries, so the macOS console can show which mailbox worker is running, what message it is handling, and whether backlog is building up behind it.
@@ -103,6 +103,8 @@ The script builds `mailroomd`, renders a set of sample daemon emails, and writes
 - `MAILROOM_TRANSPORT_SCRIPT_PATH`: installed IMAP/SMTP helper script path, defaults to `<support-root>/runtime-tools/mail_transport.py`
 - `MAILROOM_WORKDIR`: process working directory used when spawning Codex
 - `MAILROOM_WORKSPACE_ROOT`: default workspace root for probes and bootstrap commands
+- `MAILROOM_ACTIVE_TURN_RECOVERY_POLL_SECONDS`: polling interval for restarted active turns, defaults to `30`
+- `MAILROOM_ACTIVE_TURN_RECOVERY_TIMEOUT_SECONDS`: maximum active-turn age before recovery records a system-error timeout, defaults to `21600`
 
 ## Verification
 
