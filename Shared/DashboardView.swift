@@ -57,7 +57,8 @@ struct DashboardView: View {
     private var dashboardSections: some View {
         MailDeskSection(
             workspaceModel: workspaceModel,
-            selectedItemID: $selectedMailPanelItemID
+            selectedItemID: $selectedMailPanelItemID,
+            onOpenSettings: openSettings
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -218,6 +219,346 @@ private struct OperatorFeedbackAlert: Identifiable {
     let id = UUID()
     let title: String
     let message: String
+}
+
+private struct MailroomSetupReadiness {
+    let isDaemonRunning: Bool
+    let hasRelayMailbox: Bool
+    let relayMailboxHasPassword: Bool
+    let activeProjectCount: Int
+    let projectCount: Int
+    let activeSenderCount: Int
+    let senderCount: Int
+    let hasMailboxActivity: Bool
+
+    @MainActor
+    static func make(from workspaceModel: MailroomWorkspaceModel) -> MailroomSetupReadiness {
+        let identityAccount = workspaceModel.identityAccount
+        return MailroomSetupReadiness(
+            isDaemonRunning: workspaceModel.daemonRuntimeStatus.lifecycle == .running,
+            hasRelayMailbox: identityAccount != nil,
+            relayMailboxHasPassword: identityAccount?.hasPasswordStored == true,
+            activeProjectCount: workspaceModel.managedProjects.filter(\.isEnabled).count,
+            projectCount: workspaceModel.managedProjects.count,
+            activeSenderCount: workspaceModel.senderPolicies.filter(\.isEnabled).count,
+            senderCount: workspaceModel.senderPolicies.count,
+            hasMailboxActivity: !workspaceModel.mailboxMessages.isEmpty
+        )
+    }
+
+    var coreStepCount: Int { 4 }
+
+    var completedCoreStepCount: Int {
+        [
+            isDaemonRunning,
+            hasRelayMailbox && relayMailboxHasPassword,
+            activeProjectCount > 0,
+            activeSenderCount > 0
+        ].filter { $0 }.count
+    }
+
+    var isCoreReady: Bool {
+        completedCoreStepCount == coreStepCount
+    }
+
+    var progressLabel: String {
+        LT(
+            "\(completedCoreStepCount) of \(coreStepCount) complete",
+            "\(completedCoreStepCount) / \(coreStepCount) 已完成",
+            "\(completedCoreStepCount) / \(coreStepCount) 完了"
+        )
+    }
+
+    var nextIncompleteStep: MailroomSetupStep? {
+        steps.first(where: { !$0.isComplete })
+    }
+
+    var steps: [MailroomSetupStep] {
+        [
+            MailroomSetupStep(
+                id: "runtime",
+                pane: .runtime,
+                title: LT("Start the background daemon", "启动后台 daemon", "バックグラウンド daemon を起動"),
+                detail: LT(
+                    "The app needs a running `mailroomd` control plane before live mailbox setup and state inspection work.",
+                    "App 需要先连上正在运行的 `mailroomd`，才能保存邮箱配置并查看实时状态。",
+                    "ライブのメール設定と状態確認には、稼働中の `mailroomd` 制御プレーンが必要。"
+                ),
+                actionTitle: LT("Open Runtime", "打开运行状态", "ランタイムを開く"),
+                isComplete: isDaemonRunning
+            ),
+            MailroomSetupStep(
+                id: "relay",
+                pane: .mailboxes,
+                title: hasRelayMailbox
+                    ? LT("Save the relay mailbox password", "保存信使邮箱密码", "中継メールのパスワードを保存")
+                    : LT("Add a relay mailbox", "添加信使邮箱", "中継メールを追加"),
+                detail: hasRelayMailbox
+                    ? LT(
+                        "The mailbox exists, but polling stays paused until an app password is saved.",
+                        "邮箱已存在，但必须保存应用密码后才会开始轮询。",
+                        "メール設定はあるが、アプリ用パスワードが保存されるまでポーリングは停止する。"
+                    )
+                    : LT(
+                        "Configure the address Patch Courier polls and sends replies from.",
+                        "配置 Patch Courier 用来收信和回信的邮箱地址。",
+                        "Patch Courier が受信と返信に使うメールアドレスを設定する。"
+                    ),
+                actionTitle: LT("Open Relay", "打开信使邮箱", "中継メールを開く"),
+                isComplete: hasRelayMailbox && relayMailboxHasPassword
+            ),
+            MailroomSetupStep(
+                id: "projects",
+                pane: .projects,
+                title: LT("Add one managed project", "添加一个受管项目", "管理対象プロジェクトを追加"),
+                detail: activeProjectCount > 0
+                    ? LT(
+                        "\(activeProjectCount) active project out of \(projectCount) total.",
+                        "共 \(projectCount) 个项目，其中 \(activeProjectCount) 个启用。",
+                        "合計 \(projectCount) 件中、\(activeProjectCount) 件が有効。"
+                    )
+                    : LT(
+                        "Email senders need at least one local project they can select or target.",
+                        "邮件发件人至少需要一个可选择或可指定的本地项目。",
+                        "メール送信者には、選択または指定できるローカルプロジェクトが少なくとも 1 つ必要。"
+                    ),
+                actionTitle: LT("Open Projects", "打开项目", "プロジェクトを開く"),
+                isComplete: activeProjectCount > 0
+            ),
+            MailroomSetupStep(
+                id: "senders",
+                pane: .whitelist,
+                title: LT("Authorize one sender", "授权一个发件人", "送信者を 1 人許可"),
+                detail: activeSenderCount > 0
+                    ? LT(
+                        "\(activeSenderCount) active sender out of \(senderCount) total.",
+                        "共 \(senderCount) 个发件人，其中 \(activeSenderCount) 个启用。",
+                        "合計 \(senderCount) 件中、\(activeSenderCount) 件が有効。"
+                    )
+                    : LT(
+                        "Only enabled sender policies can start or continue Codex work by email.",
+                        "只有启用的发件人策略才能通过邮件启动或继续 Codex 任务。",
+                        "有効な送信者ポリシーだけが、メールで Codex 作業を開始または継続できる。"
+                    ),
+                actionTitle: LT("Open Whitelist", "打开白名单", "許可リストを開く"),
+                isComplete: activeSenderCount > 0
+            )
+        ]
+    }
+}
+
+private struct MailroomSetupStep: Identifiable {
+    let id: String
+    let pane: OperatorSettingsPane
+    let title: String
+    let detail: String
+    let actionTitle: String
+    let isComplete: Bool
+}
+
+private struct FirstRunSetupGuideCard: View {
+    let readiness: MailroomSetupReadiness
+    let onOpenSettings: (OperatorSettingsPane) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(headerTint.opacity(0.14))
+                    Image(systemName: readiness.isCoreReady ? "paperplane.circle.fill" : "checklist.checked")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(headerTint)
+                }
+                .frame(width: 54, height: 54)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color(red: 0.16, green: 0.18, blue: 0.22))
+                    Text(detail)
+                        .font(.subheadline)
+                        .foregroundStyle(Color(red: 0.28, green: 0.31, blue: 0.36))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 12)
+
+                MessagePill(
+                    label: readiness.isCoreReady ? LT("Ready", "已就绪", "準備完了") : readiness.progressLabel,
+                    tint: headerTint
+                )
+            }
+
+            if readiness.isCoreReady {
+                SmokeTestEmailBlock()
+
+                HStack(spacing: 12) {
+                    Button(LT("Check mailbox health", "查看邮箱健康", "メール健全性を確認")) {
+                        onOpenSettings(.runtime)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button(LT("Review relay settings", "检查信使邮箱配置", "中継メール設定を確認")) {
+                        onOpenSettings(.mailboxes)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(readiness.steps) { step in
+                        FirstRunSetupStepRow(
+                            step: step,
+                            isPrimaryAction: step.id == readiness.nextIncompleteStep?.id,
+                            showsAction: true,
+                            onOpenSettings: onOpenSettings
+                        )
+                    }
+                }
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.82))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(headerTint.opacity(0.16), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.04), radius: 18, x: 0, y: 8)
+        )
+    }
+
+    private var headerTint: Color {
+        readiness.isCoreReady ? Color(red: 0.16, green: 0.48, blue: 0.34) : Color(red: 0.24, green: 0.38, blue: 0.62)
+    }
+
+    private var title: String {
+        readiness.isCoreReady
+            ? LT("Ready for a smoke test", "可以发烟测邮件了", "スモークテスト可能")
+            : LT("Finish first-run setup", "完成首次使用配置", "初回セットアップを完了")
+    }
+
+    private var detail: String {
+        if readiness.isCoreReady {
+            return readiness.hasMailboxActivity
+                ? LT(
+                    "Mailbox setup is complete. Select a message after the next poll to inspect the conversation and task status.",
+                    "邮箱配置已经完整。下一次轮询后，选择一封邮件即可查看对话和任务状态。",
+                    "メール設定は完了。次回ポーリング後にメッセージを選ぶと、会話とタスク状態を確認できる。"
+                )
+                : LT(
+                    "Send one test email from an authorized sender to confirm the full mail-to-Codex loop.",
+                    "从已授权发件人发送一封测试邮件，确认邮件到 Codex 的完整链路。",
+                    "許可済み送信者からテストメールを 1 通送り、メールから Codex までの流れを確認する。"
+                )
+        }
+
+        return LT(
+            "Patch Courier needs these four items before incoming email can reliably start Codex work.",
+            "Patch Courier 需要先完成这四项，来信才能可靠地启动 Codex 任务。",
+            "受信メールで Codex 作業を確実に開始するには、この 4 項目が必要。"
+        )
+    }
+}
+
+private struct FirstRunSetupStepRow: View {
+    let step: MailroomSetupStep
+    let isPrimaryAction: Bool
+    let showsAction: Bool
+    let onOpenSettings: (OperatorSettingsPane) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: step.isComplete ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(step.isComplete ? Color(red: 0.16, green: 0.48, blue: 0.34) : Color.orange)
+                .padding(.top, 1)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(step.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.18, green: 0.20, blue: 0.24))
+                Text(step.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 10)
+
+            if showsAction, !step.isComplete {
+                if isPrimaryAction {
+                    Button(step.actionTitle) {
+                        onOpenSettings(step.pane)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                } else {
+                    Button(step.actionTitle) {
+                        onOpenSettings(step.pane)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(step.isComplete ? Color.green.opacity(0.06) : Color.black.opacity(0.03))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(step.isComplete ? Color.green.opacity(0.12) : Color.black.opacity(0.05), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct SmokeTestEmailBlock: View {
+    private let sample = """
+    Subject: Patch Courier smoke test
+
+    Please inspect the Patch Courier project and reply with a short status summary.
+    """
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(LT("Smoke-test email", "烟测邮件", "スモークテストメール"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color(red: 0.18, green: 0.20, blue: 0.24))
+            Text(sample)
+                .font(.caption.monospaced())
+                .foregroundStyle(Color(red: 0.20, green: 0.23, blue: 0.29))
+                .textSelection(.enabled)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.black.opacity(0.04))
+                )
+            Text(
+                LT(
+                    "Expected result: confirmation, project selection, approval, or a final reply appears after the next polling cycle.",
+                    "预期结果：下一次轮询后，会出现确认、项目选择、审批或最终回复。",
+                    "期待結果: 次回ポーリング後に確認、プロジェクト選択、承認、または最終返信が表示される。"
+                )
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(red: 0.95, green: 0.97, blue: 0.99))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.black.opacity(0.05), lineWidth: 1)
+                )
+        )
+    }
 }
 
 private struct DaemonOverviewSection: View {
@@ -1229,6 +1570,7 @@ private struct DaemonThreadCard: View {
 private struct MailDeskSection: View {
     @ObservedObject var workspaceModel: MailroomWorkspaceModel
     @Binding var selectedItemID: String?
+    let onOpenSettings: (OperatorSettingsPane) -> Void
 
     private var feedItems: [MailDeskFeedItem] {
         MailDeskFeedItem.build(
@@ -1284,6 +1626,10 @@ private struct MailDeskSection: View {
             return selected
         }
         return feedItems.first
+    }
+
+    private var setupReadiness: MailroomSetupReadiness {
+        MailroomSetupReadiness.make(from: workspaceModel)
     }
 
     private var identityMailboxHealth: MailroomDaemonMailboxHealthSummary? {
@@ -1347,7 +1693,9 @@ private struct MailDeskSection: View {
 
             MailDeskPreview(
                 item: effectiveSelectedItem,
+                setupReadiness: setupReadiness,
                 isResolvingThreadDecision: effectiveSelectedItem?.threadToken.map(workspaceModel.isResolvingThreadDecision) ?? false,
+                onOpenSettings: onOpenSettings,
                 onResolveThreadDecision: { decision in
                     guard let threadToken = effectiveSelectedItem?.threadToken else {
                         return
@@ -2697,7 +3045,9 @@ private struct MailDeskRow: View {
 
 private struct MailDeskPreview: View {
     let item: MailDeskFeedItem?
+    let setupReadiness: MailroomSetupReadiness
     let isResolvingThreadDecision: Bool
+    let onOpenSettings: (OperatorSettingsPane) -> Void
     let onResolveThreadDecision: (MailroomDaemonThreadDecision) -> Void
 
     var body: some View {
@@ -2804,13 +3154,9 @@ private struct MailDeskPreview: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 VStack {
-                    EmptySectionState(
-                        title: LT("Choose a message", "请选择一封邮件", "メールを選択してください"),
-                        detail: LT(
-                            "Select a row from the inbox on the left to read the body and see what the daemon did with it.",
-                            "从左边选一封邮件，就能在这里直接看正文和 daemon 的处理结果。",
-                            "左の受信トレイからメールを選ぶと、本文と daemon の処理結果をここで確認できる。"
-                        )
+                    FirstRunSetupGuideCard(
+                        readiness: setupReadiness,
+                        onOpenSettings: onOpenSettings
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -3797,6 +4143,10 @@ private struct SettingsSheetView: View {
         workspaceModel.managedProjects.filter { $0.isEnabled }.count
     }
 
+    private var setupReadiness: MailroomSetupReadiness {
+        MailroomSetupReadiness.make(from: workspaceModel)
+    }
+
     private var receiveStatusText: String {
         guard let identity = workspaceModel.identityAccount else {
             return LT("Needs mailbox", "需先配置邮箱", "メール設定が必要")
@@ -3847,6 +4197,10 @@ private struct SettingsSheetView: View {
                             selectedPane = pane
                         }
                     }
+                }
+
+                SettingsFirstRunCard(readiness: setupReadiness) { pane in
+                    selectedPane = pane
                 }
 
                 Spacer(minLength: 0)
@@ -4502,6 +4856,85 @@ private struct DashboardToolbarStrip: View {
                 )
             }
         }
+    }
+}
+
+private struct SettingsFirstRunCard: View {
+    let readiness: MailroomSetupReadiness
+    let onOpenSettings: (OperatorSettingsPane) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: readiness.isCoreReady ? "checkmark.seal.fill" : "checklist")
+                    .foregroundStyle(tint)
+                Text(readiness.isCoreReady ? LT("Ready", "已就绪", "準備完了") : LT("First run", "首次配置", "初回設定"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.16, green: 0.18, blue: 0.22))
+                Spacer(minLength: 0)
+            }
+
+            ProgressView(
+                value: Double(readiness.completedCoreStepCount),
+                total: Double(readiness.coreStepCount)
+            )
+            .tint(tint)
+
+            Text(statusLine)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let nextStep = readiness.nextIncompleteStep {
+                Button(nextStep.actionTitle) {
+                    onOpenSettings(nextStep.pane)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            } else {
+                Button(LT("Mailbox health", "邮箱健康", "メール健全性")) {
+                    onOpenSettings(.runtime)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.58))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(tint.opacity(0.18), lineWidth: 1)
+                )
+        )
+    }
+
+    private var tint: Color {
+        readiness.isCoreReady ? Color(red: 0.16, green: 0.48, blue: 0.34) : Color(red: 0.24, green: 0.38, blue: 0.62)
+    }
+
+    private var statusLine: String {
+        if let nextStep = readiness.nextIncompleteStep {
+            return LT(
+                "\(readiness.progressLabel). Next: \(nextStep.title).",
+                "\(readiness.progressLabel)。下一步：\(nextStep.title)。",
+                "\(readiness.progressLabel)。次: \(nextStep.title)。"
+            )
+        }
+
+        return readiness.hasMailboxActivity
+            ? LT(
+                "Setup is complete and mailbox activity is visible.",
+                "配置已完成，已经能看到邮箱活动。",
+                "設定は完了し、メール活動も表示されている。"
+            )
+            : LT(
+                "Setup is complete. Send the smoke-test email next.",
+                "配置已完成。下一步发送烟测邮件。",
+                "設定は完了。次にスモークテストメールを送る。"
+            )
     }
 }
 

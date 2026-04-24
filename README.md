@@ -146,7 +146,7 @@ Mailbox polling is the real product loop. Configure it only after the local prob
    - **Sender policies**: trusted sender address, role, allowed workspace roots, and whether the first reply token is required.
    - **Projects**: managed local project display name, slug, root path, summary, and default capability.
 
-   Use `docs/CONFIGURATION_WALKTHROUGH.md` for exact fields, safe defaults, and a smoke-test email.
+   Use `docs/CONFIGURATION_WALKTHROUGH.md` for exact fields, safe defaults, and a smoke-test email. The macOS app mirrors the same path as a first-run checklist in the empty inbox and Settings sidebar.
 
 4. Start the daemon from the app, or run it directly:
 

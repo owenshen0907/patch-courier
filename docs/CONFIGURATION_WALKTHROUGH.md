@@ -29,6 +29,8 @@ xcodebuild -project PatchCourier.xcodeproj \
 open "$DERIVED_DATA_PATH/Build/Products/Debug/Patch Courier.app"
 ```
 
+The app also surfaces this path in-product: the empty inbox shows the remaining first-run steps, and the Settings sidebar keeps a compact progress card that jumps directly to Runtime, Relay, Projects, or Whitelist.
+
 ## 1. Mailboxes
 
 Open **Setup -> Mailboxes** and create or edit the relay mailbox.
