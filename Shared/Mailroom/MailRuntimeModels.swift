@@ -219,6 +219,22 @@ struct MailroomParsedCommand: Hashable, Sendable {
     var detectedToken: String?
 }
 
+enum MailroomEvoMapCommandKind: Hashable, Sendable {
+    case execute
+    case status
+}
+
+struct MailroomEvoMapCommand: Hashable, Sendable {
+    var kind: MailroomEvoMapCommandKind
+    var requestID: String?
+    var taskID: String?
+    var projectReference: String?
+    var language: String?
+    var autoSubmitAllowed: Bool
+    var mode: String?
+    var rawBody: String
+}
+
 struct MailroomSyncOutcome: Sendable {
     var processedJobs: [ExecutionJobRecord]
     var ignoredCount: Int

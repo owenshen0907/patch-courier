@@ -1118,6 +1118,7 @@ extension MailroomDaemon {
             from: message,
             fallbackWorkspaceRoot: policy.allowedWorkspaceRoots.first ?? account.workspaceRoot
         )
+        let evoMapCommand = MailroomMailParser.parseEvoMapCommand(from: message)
 
         if let token = parsedCommand.detectedToken,
            let thread = try await threadStore.thread(token: token) {
@@ -1261,6 +1262,28 @@ extension MailroomDaemon {
                 outboundMessageID: outboundMessageID,
                 note: outcomeNote(outcome)
             )
+        }
+
+        if let evoMapCommand {
+            switch evoMapCommand.kind {
+            case .execute:
+                return try await processEvoMapExecuteCommand(
+                    evoMapCommand,
+                    message: message,
+                    account: account,
+                    password: password,
+                    policy: policy,
+                    parsedCommand: parsedCommand
+                )
+            case .status:
+                return try await processEvoMapStatusCommand(
+                    evoMapCommand,
+                    message: message,
+                    account: account,
+                    password: password,
+                    parsedCommand: parsedCommand
+                )
+            }
         }
 
         if shouldUseProjectProbe(for: policy) {
@@ -1476,6 +1499,202 @@ extension MailroomDaemon {
             threadToken: started.thread.id,
             outboundMessageID: outboundMessageID,
             note: outcomeNote(outcome)
+        )
+    }
+
+    private func processEvoMapExecuteCommand(
+        _ command: MailroomEvoMapCommand,
+        message: InboundMailMessage,
+        account: MailboxAccount,
+        password: String,
+        policy: SenderPolicy,
+        parsedCommand: MailroomParsedCommand
+    ) async throws -> MailroomMailboxMessageResult {
+        guard policy.requiresReplyToken == false else {
+            return try await rejectMessage(
+                message,
+                account: account,
+                password: password,
+                threadToken: nil,
+                note: LT(
+                    "EvoMap mail automation is blocked because this sender policy still requires first-contact reply-token confirmation.",
+                    "EvoMap 邮件自动化已被阻止，因为这个发件人策略仍要求首封邮件 reply-token 确认。",
+                    "この送信者ポリシーは初回 reply-token 確認を要求しているため、EvoMap メール自動化をブロックした。"
+                )
+            )
+        }
+
+        let projects = try await manageableProjects(for: policy)
+        let projectReference = command.projectReference ?? parsedCommand.projectReference ?? "evomap-tasks"
+        guard let project = resolveManagedProject(reference: projectReference, existingProjectID: nil, candidates: projects) else {
+            return try await rejectMessage(
+                message,
+                account: account,
+                password: password,
+                threadToken: nil,
+                note: LT(
+                    "No enabled managed project matched '\(projectReference)'. Create an EvoMap Tasks project with slug evomap-tasks, then resend the task.",
+                    "没有匹配到启用中的受管项目 '\(projectReference)'。请先创建 slug 为 evomap-tasks 的 EvoMap Tasks 项目，然后重新发送任务。",
+                    "'\(projectReference)' に一致する有効な管理対象プロジェクトがない。slug が evomap-tasks の EvoMap Tasks プロジェクトを作成してから再送してください。"
+                )
+            )
+        }
+
+        guard let requestedCapability = mapCapability(project.defaultCapability) else {
+            return try await rejectMessage(
+                message,
+                account: account,
+                password: password,
+                threadToken: nil,
+                note: LT(
+                    "The EvoMap managed project uses a capability that is not enabled for the daemon mail loop.",
+                    "EvoMap 受管项目使用了当前 daemon 邮件循环未启用的能力。",
+                    "EvoMap 管理対象プロジェクトは daemon メールループで未対応の権限を使っている。"
+                )
+            )
+        }
+
+        try FileManager.default.createDirectory(
+            at: URL(fileURLWithPath: project.rootPath, isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let prompt = composeEvoMapExecutionPrompt(
+            command: command,
+            parsedCommand: parsedCommand,
+            project: project,
+            requestedCapability: requestedCapability
+        )
+
+        let started = try await startMailWorkflow(
+            seed: MailroomThreadSeed(
+                mailboxID: account.id,
+                normalizedSender: message.fromAddress.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                subject: parsedCommand.cleanedSubject,
+                workspaceRoot: project.rootPath,
+                capability: requestedCapability
+            ),
+            prompt: prompt,
+            origin: .newMail
+        )
+
+        guard let turn = started.turn else {
+            return MailroomMailboxMessageResult(
+                uid: message.uid,
+                messageID: message.messageID,
+                sender: message.fromAddress,
+                subject: message.subject,
+                action: .failed,
+                threadToken: started.thread.id,
+                outboundMessageID: nil,
+                note: LT("No Codex turn was created for the EvoMap task.", "EvoMap 任务没有创建出 Codex turn。", "EvoMap タスクの Codex turn が作成されなかった。")
+            )
+        }
+
+        if var storedThread = try await threadStore.thread(token: started.thread.id) {
+            storedThread.managedProjectID = project.id
+            storedThread.pendingPromptBody = prompt
+            storedThread.updatedAt = Date()
+            try await threadStore.save(thread: storedThread)
+        }
+
+        let receiptMessageID = await sendReceiptEnvelope(
+            account: account,
+            password: password,
+            replyTo: message,
+            threadToken: started.thread.id,
+            recipient: message.fromAddress,
+            title: LT("EvoMap task received, Codex is starting", "已收到 EvoMap 任务，Codex 正在启动", "EvoMap タスクを受信し、Codex を開始しています"),
+            summary: LT(
+                "Patch Courier matched the EvoMap Tasks workspace and started a local Codex run. It will reply with a structured result for EvomapConsole.",
+                "Patch Courier 已匹配 EvoMap Tasks 工作区并启动本地 Codex 执行。完成后会回传可供 EvomapConsole 使用的结构化结果。",
+                "Patch Courier は EvoMap Tasks ワークスペースを特定し、ローカル Codex 実行を開始した。完了後、EvomapConsole 用の構造化結果を返信します。"
+            ),
+            workspaceRoot: project.rootPath,
+            capability: requestedCapability,
+            projectName: project.displayName,
+            requestPreview: command.requestID ?? command.taskID ?? parsedCommand.actionSummary,
+            nextSteps: [
+                LT("Run the bounty work inside the EvoMap Tasks workspace only.", "只在 EvoMap Tasks 工作区内执行悬赏任务。", "EvoMap Tasks ワークスペース内だけで bounty 作業を実行する。"),
+                LT("Do not call EvoMap publish or complete APIs from Patch Courier.", "Patch Courier 不会调用 EvoMap 发布或完成接口。", "Patch Courier から EvoMap publish / complete API は呼び出さない。"),
+                LT("Return a structured answer that EvomapConsole can paste into the final answer field.", "返回 EvomapConsole 可粘贴进最终答案的结构化回答。", "EvomapConsole の最終回答欄に貼り付けられる構造化回答を返す。")
+            ]
+        )
+        try await updateThreadMailState(
+            token: started.thread.id,
+            lastInboundMessageID: message.messageID,
+            lastOutboundMessageID: receiptMessageID
+        )
+
+        let outcome = try await waitForTurnOutcome(token: started.thread.id, turnID: turn.id)
+        let outboundMessageID = try await sendOutcomeMail(
+            outcome,
+            account: account,
+            password: password,
+            threadToken: started.thread.id,
+            threadSubject: started.thread.subject,
+            recipient: message.fromAddress,
+            replyTo: message
+        )
+        try await updateThreadMailState(
+            token: started.thread.id,
+            lastInboundMessageID: message.messageID,
+            lastOutboundMessageID: outboundMessageID
+        )
+
+        return MailroomMailboxMessageResult(
+            uid: message.uid,
+            messageID: message.messageID,
+            sender: message.fromAddress,
+            subject: message.subject,
+            action: action(for: outcome),
+            threadToken: started.thread.id,
+            outboundMessageID: outboundMessageID,
+            note: outcomeNote(outcome)
+        )
+    }
+
+    private func processEvoMapStatusCommand(
+        _ command: MailroomEvoMapCommand,
+        message: InboundMailMessage,
+        account: MailboxAccount,
+        password: String,
+        parsedCommand: MailroomParsedCommand
+    ) async throws -> MailroomMailboxMessageResult {
+        let status = try await evoMapStatusLookup(for: command)
+        let outboundMessageID = try await sendEnvelope(
+            composeStatusEnvelope(
+                to: [message.fromAddress],
+                subject: composeOutboundSubject(
+                    baseSubject: parsedCommand.cleanedSubject,
+                    threadToken: status.threadToken,
+                    state: status.found ? nil : .failed
+                ),
+                tone: status.found ? .success : .warning,
+                statusLabel: status.found ? LT("Found", "已找到", "検出") : LT("Not found", "未找到", "未検出"),
+                title: status.found
+                    ? LT("EvoMap task status", "EvoMap 任务状态", "EvoMap タスク状態")
+                    : LT("EvoMap task status not found", "未找到 EvoMap 任务状态", "EvoMap タスク状態が見つからない"),
+                summary: status.summary,
+                fields: status.fields,
+                nextSteps: status.found
+                    ? [LT("If the task is done, use the latest result email to fill EvomapConsole's final answer field.", "如果任务已完成，请用最近的结果邮件填写 EvomapConsole 的最终答案。", "タスクが完了している場合、最新の結果メールで EvomapConsole の最終回答欄を埋めてください。")]
+                    : [LT("Confirm the request_id or task_id, then resend the status query.", "请确认 request_id 或 task_id 后重新查询。", "request_id または task_id を確認して、状態照会を再送してください。")]
+            ),
+            account: account,
+            password: password,
+            replyTo: message
+        )
+
+        return MailroomMailboxMessageResult(
+            uid: message.uid,
+            messageID: message.messageID,
+            sender: message.fromAddress,
+            subject: message.subject,
+            action: status.found ? .completed : .failed,
+            threadToken: status.threadToken,
+            outboundMessageID: outboundMessageID,
+            note: status.summary
         )
     }
 
@@ -2968,6 +3187,137 @@ extension MailroomDaemon {
                 )
             }
             .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private func composeEvoMapExecutionPrompt(
+        command: MailroomEvoMapCommand,
+        parsedCommand: MailroomParsedCommand,
+        project: ManagedProject,
+        requestedCapability: MailroomCapability
+    ) -> String {
+        let requestID = command.requestID ?? "unknown"
+        let taskID = command.taskID ?? "unknown"
+        let language = command.language ?? "auto"
+        let autoSubmitAllowed = command.autoSubmitAllowed ? "true" : "false"
+
+        return """
+        You are executing an EvoMap bounty task delivered through Patch Courier.
+
+        Response contract:
+        - Return the final message with these markers exactly:
+          PATCH_COURIER_RESULT: EVOMAP_EXECUTE
+          REQUEST_ID: \(requestID)
+          TASK_ID: \(taskID)
+          STATUS: done | need_input | failed
+          CONFIDENCE: 0.00-1.00
+          NEEDS_USER_INPUT: true | false
+          RISK_FLAGS: []
+          FINAL_ANSWER_MARKDOWN:
+          <the answer EvomapConsole should paste into its Final answer field>
+        - Do not call EvoMap publish, complete, claim, or settlement APIs.
+        - Do not expose secrets, credentials, node_secret values, or private machine paths.
+        - Keep work inside the managed project workspace.
+        - If the task language is Chinese, answer in Chinese unless the task explicitly asks otherwise.
+        - If the task needs missing context, set STATUS to need_input and ask precise questions.
+
+        Execution metadata:
+        - request_id: \(requestID)
+        - task_id: \(taskID)
+        - project: \(project.displayName) (\(project.slug))
+        - workspace: \(project.rootPath)
+        - capability: \(requestedCapability.rawValue)
+        - language: \(language)
+        - auto_submit_allowed: \(autoSubmitAllowed)
+        - original_subject: \(parsedCommand.cleanedSubject)
+
+        EvoMap mail payload:
+        \(command.rawBody)
+        """
+    }
+
+    private func evoMapStatusLookup(
+        for command: MailroomEvoMapCommand
+    ) async throws -> (found: Bool, threadToken: String?, summary: String, fields: [MailEnvelopeField]) {
+        let identifiers = [command.requestID, command.taskID]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        let threads = try await threadStore.allThreads()
+        let matchedThreads = threads.filter { thread in
+            evoMapIdentifiers(identifiers, match: [
+                thread.id,
+                thread.subject,
+                thread.codexThreadID ?? "",
+                thread.pendingPromptBody ?? ""
+            ])
+        }
+
+        guard let thread = matchedThreads.sorted(by: { $0.updatedAt > $1.updatedAt }).first else {
+            let fields = [
+                MailEnvelopeField(label: "REQUEST_ID", value: command.requestID ?? "unknown", monospace: true),
+                MailEnvelopeField(label: "TASK_ID", value: command.taskID ?? "unknown", monospace: true)
+            ]
+            return (
+                found: false,
+                threadToken: nil,
+                summary: LT(
+                    "No Patch Courier thread matched this EvoMap request yet.",
+                    "还没有 Patch Courier 线程匹配这个 EvoMap 请求。",
+                    "この EvoMap 要求に一致する Patch Courier スレッドはまだありません。"
+                ),
+                fields: fields
+            )
+        }
+
+        let turns = try await turnStore
+            .allTurns()
+            .filter { turn in
+                turn.mailThreadToken == thread.id
+                    || (thread.codexThreadID.map { $0 == turn.codexThreadID } ?? false)
+            }
+            .sorted { $0.updatedAt > $1.updatedAt }
+        let latestTurn = turns.first
+        var fields: [MailEnvelopeField] = [
+            MailEnvelopeField(label: "REQUEST_ID", value: command.requestID ?? "unknown", monospace: true),
+            MailEnvelopeField(label: "TASK_ID", value: command.taskID ?? "unknown", monospace: true),
+            MailEnvelopeField(label: "THREAD", value: "[patch-courier:\(thread.id)]", monospace: true),
+            MailEnvelopeField(label: "THREAD_STATUS", value: thread.status.rawValue, monospace: true),
+            MailEnvelopeField(label: "WORKSPACE", value: thread.workspaceRoot, monospace: true)
+        ]
+        if let latestTurn {
+            fields.append(MailEnvelopeField(label: "LATEST_TURN", value: latestTurn.id, monospace: true))
+            fields.append(MailEnvelopeField(label: "TURN_STATUS", value: latestTurn.status.rawValue, monospace: true))
+            fields.append(MailEnvelopeField(label: "UPDATED_AT", value: Self.iso8601String(from: latestTurn.updatedAt), monospace: true))
+        } else {
+            fields.append(MailEnvelopeField(label: "LATEST_TURN", value: "none", monospace: true))
+            fields.append(MailEnvelopeField(label: "UPDATED_AT", value: Self.iso8601String(from: thread.updatedAt), monospace: true))
+        }
+
+        return (
+            found: true,
+            threadToken: thread.id,
+            summary: latestTurn.map {
+                LT(
+                    "Matched Patch Courier thread \(thread.id). Latest turn status: \($0.status.rawValue).",
+                    "已匹配 Patch Courier 线程 \(thread.id)。最新 turn 状态：\($0.status.rawValue)。",
+                    "Patch Courier スレッド \(thread.id) に一致しました。最新 turn 状態: \($0.status.rawValue)。"
+                )
+            } ?? LT(
+                "Matched Patch Courier thread \(thread.id), but it has no turn yet.",
+                "已匹配 Patch Courier 线程 \(thread.id)，但还没有 turn。",
+                "Patch Courier スレッド \(thread.id) に一致しましたが、turn はまだありません。"
+            ),
+            fields: fields
+        )
+    }
+
+    private func evoMapIdentifiers(_ identifiers: [String], match values: [String]) -> Bool {
+        guard !identifiers.isEmpty else {
+            return false
+        }
+        let haystack = values.joined(separator: "\n").lowercased()
+        return identifiers.contains { identifier in
+            haystack.contains(identifier.lowercased())
+        }
     }
 
     private func updateThreadMailState(token: String, lastInboundMessageID: String?, lastOutboundMessageID: String?) async throws {

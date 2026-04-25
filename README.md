@@ -162,6 +162,44 @@ For a one-shot mailbox pass instead of a long-running loop:
 "$MAILROOMD" --sync-mailboxes
 ```
 
+## EvoMap Task Handoff
+
+Patch Courier can receive EvoMap bounty work from EvomapConsole over the normal mailbox loop. This keeps the two apps decoupled: EvomapConsole manages EvoMap official APIs, while Patch Courier runs local Codex work and replies by email.
+
+Recommended setup:
+
+1. Create a managed project named `EvoMap Tasks` with slug `evomap-tasks`. Point it at a dedicated local workspace, for example `~/Workspace/evomap-tasks`.
+2. Add a sender policy for the EvomapConsole sending mailbox. Allow the EvoMap Tasks workspace root and disable first-contact reply-token confirmation only for this dedicated automation sender.
+3. Configure EvomapConsole `Settings -> Patch Courier` with the relay mailbox and the same project slug.
+4. In EvomapConsole, claim a bounty first, then send the generated `EVOMAP_EXECUTE` email. Use `EVOMAP_STATUS` emails for status checks.
+
+Execute email format:
+
+```text
+PATCH_COURIER_COMMAND: EVOMAP_EXECUTE
+PATCH_COURIER_PROTOCOL: 1
+REQUEST_ID: evomap:<task_id>
+TASK_ID: <task_id>
+PROJECT: evomap-tasks
+MODE: draft
+AUTO_SUBMIT_ALLOWED: false
+LANGUAGE: zh-Hans
+
+<task payload>
+```
+
+Status email format:
+
+```text
+PATCH_COURIER_COMMAND: EVOMAP_STATUS
+PATCH_COURIER_PROTOCOL: 1
+REQUEST_ID: evomap:<task_id>
+TASK_ID: <task_id>
+PROJECT: evomap-tasks
+```
+
+Patch Courier deliberately returns a structured draft result and does not call EvoMap publish, complete, claim, or settlement APIs. Final submission stays in EvomapConsole so the operator can review the answer before spending node credentials.
+
 ## Architecture At A Glance
 
 ```mermaid

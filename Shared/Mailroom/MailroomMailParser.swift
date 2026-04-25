@@ -76,6 +76,47 @@ enum MailroomMailParser {
         return haystack[tokenRange].uppercased()
     }
 
+    static func parseEvoMapCommand(from message: InboundMailMessage) -> MailroomEvoMapCommand? {
+        let strippedBody = stripQuotedReplyChain(from: message.plainBody)
+        let fields = parseAutomationFields(from: strippedBody)
+        let subject = normalizeSubject(message.subject)
+        let commandValue = fields["PATCH_COURIER_COMMAND"]
+            ?? fields["COMMAND"]
+            ?? subjectEvoMapCommand(from: subject)
+
+        guard let commandValue else {
+            return nil
+        }
+
+        let kind: MailroomEvoMapCommandKind
+        switch normalizeAutomationKey(commandValue) {
+        case "EVOMAP_EXECUTE":
+            kind = .execute
+        case "EVOMAP_STATUS":
+            kind = .status
+        default:
+            return nil
+        }
+
+        let requestID = fields["REQUEST_ID"]?.nilIfBlank
+        let taskID = fields["TASK_ID"]?.nilIfBlank
+            ?? taskIDFromRequestID(requestID)
+            ?? taskIDFromSubject(subject)
+
+        return MailroomEvoMapCommand(
+            kind: kind,
+            requestID: requestID,
+            taskID: taskID,
+            projectReference: fields["PROJECT"]?.nilIfBlank
+                ?? fields["WORKSPACE"]?.nilIfBlank
+                ?? "evomap-tasks",
+            language: fields["LANGUAGE"]?.nilIfBlank,
+            autoSubmitAllowed: boolField(fields["AUTO_SUBMIT_ALLOWED"]) ?? false,
+            mode: fields["MODE"]?.nilIfBlank,
+            rawBody: strippedBody
+        )
+    }
+
     static func normalizeSubject(_ rawSubject: String) -> String {
         var subject = rawSubject.trimmingCharacters(in: .whitespacesAndNewlines)
         var didTrimPrefix = true
@@ -173,6 +214,106 @@ enum MailroomMailParser {
             projectReference: fields["project"],
             body: contentLines.joined(separator: "\n")
         )
+    }
+
+    private static func parseAutomationFields(from body: String) -> [String: String] {
+        let lines = body.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+        var fields: [String: String] = [:]
+        var foundField = false
+
+        for line in lines.prefix(80) {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.hasPrefix("```") {
+                break
+            }
+            if trimmed.isEmpty {
+                if foundField {
+                    break
+                }
+                continue
+            }
+            guard let field = splitAutomationFieldLine(line) else {
+                if foundField {
+                    break
+                }
+                continue
+            }
+            foundField = true
+            fields[normalizeAutomationKey(field.key)] = field.value
+        }
+
+        return fields
+    }
+
+    private static func splitAutomationFieldLine(_ line: String) -> (key: String, value: String)? {
+        guard let separatorIndex = line.firstIndex(where: { fieldSeparators.contains($0) }) else {
+            return nil
+        }
+
+        let key = String(line[..<separatorIndex]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = line[line.index(after: separatorIndex)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty, !value.isEmpty else {
+            return nil
+        }
+        return (key, value)
+    }
+
+    private static func normalizeAutomationKey(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+            .replacingOccurrences(of: "-", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+    }
+
+    private static func subjectEvoMapCommand(from subject: String) -> String? {
+        let uppercased = subject.uppercased()
+        if uppercased.contains("[EVOMAP]") && uppercased.contains("[EXECUTE]") {
+            return "EVOMAP_EXECUTE"
+        }
+        if uppercased.contains("[EVOMAP]") && uppercased.contains("[STATUS]") {
+            return "EVOMAP_STATUS"
+        }
+        return nil
+    }
+
+    private static func taskIDFromRequestID(_ requestID: String?) -> String? {
+        guard let value = requestID?.nilIfBlank else {
+            return nil
+        }
+        if let separatorIndex = value.lastIndex(of: ":") {
+            return String(value[value.index(after: separatorIndex)...]).nilIfBlank
+        }
+        return value.nilIfBlank
+    }
+
+    private static func taskIDFromSubject(_ subject: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: #"\[EvoMap\]\[(?:EXECUTE|STATUS)\]\[([^\]]+)\]"#, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(subject.startIndex..<subject.endIndex, in: subject)
+        guard let match = regex.firstMatch(in: subject, options: [], range: range),
+              let taskRange = Range(match.range(at: 1), in: subject) else {
+            return nil
+        }
+        return String(subject[taskRange]).nilIfBlank
+    }
+
+    private static func boolField(_ rawValue: String?) -> Bool? {
+        guard let rawValue = rawValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(), !rawValue.isEmpty else {
+            return nil
+        }
+
+        switch rawValue {
+        case "true", "yes", "y", "1", "允许", "是":
+            return true
+        case "false", "no", "n", "0", "不允许", "否":
+            return false
+        default:
+            return nil
+        }
     }
 
     private static func parseField(_ line: String) -> (key: String, value: String)? {
