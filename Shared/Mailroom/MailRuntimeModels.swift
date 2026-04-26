@@ -12,6 +12,20 @@ enum MailroomMailboxMessageAction: String, Codable, Hashable, Sendable {
     case failed
 }
 
+enum MailroomMailboxRemoteAction: String, Codable, Hashable, Sendable {
+    case archive
+    case delete
+}
+
+struct MailroomMailboxMessageTarget: Identifiable, Codable, Hashable, Sendable {
+    var mailboxID: String
+    var uid: UInt64
+
+    var id: String {
+        MailroomMailboxMessageRecord.makeID(mailboxID: mailboxID, uid: uid)
+    }
+}
+
 struct InboundMailMessage: Identifiable, Codable, Hashable, Sendable {
     var uid: UInt64
     var messageID: String

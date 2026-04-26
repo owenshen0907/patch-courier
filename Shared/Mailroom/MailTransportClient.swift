@@ -34,6 +34,21 @@ struct MailTransportClient: Sendable {
         return try run(command: "history", payload: payload, decode: MailHistoryResult.self)
     }
 
+    func mutateMessages(
+        account: MailboxAccount,
+        password: String,
+        uids: [UInt64],
+        action: MailroomMailboxRemoteAction
+    ) throws -> MailMessageMutationResult {
+        let payload = MailMessageMutationPayload(
+            account: account,
+            password: password,
+            uids: uids,
+            action: action
+        )
+        return try run(command: "mutate", payload: payload, decode: MailMessageMutationResult.self)
+    }
+
     func sendMessage(
         account: MailboxAccount,
         password: String,
@@ -196,6 +211,29 @@ private struct MailHistoryPayload: Encodable {
     var account: MailboxAccount
     var password: String
     var limit: Int
+}
+
+private struct MailMessageMutationPayload: Encodable {
+    var account: MailboxAccount
+    var password: String
+    var uids: [UInt64]
+    var action: MailroomMailboxRemoteAction
+}
+
+struct MailMessageMutationResult: Decodable, Sendable {
+    var action: MailroomMailboxRemoteAction
+    var requestedCount: Int
+    var affectedUIDs: [UInt64]
+    var destinationMailbox: String?
+    var expunged: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case action
+        case requestedCount = "requested_count"
+        case affectedUIDs = "affected_uids"
+        case destinationMailbox = "destination_mailbox"
+        case expunged
+    }
 }
 
 struct MailProbeResult: Decodable, Sendable {
@@ -445,6 +483,144 @@ def fetch_history(payload: dict) -> dict:
             pass
 
 
+def parse_mailbox_list_row(row):
+    if isinstance(row, bytes):
+        text = row.decode("utf-8", errors="replace")
+    else:
+        text = str(row)
+
+    match = re.match(r"\((?P<flags>[^\)]*)\)\s+\"?(?P<delimiter>[^\"]*)\"?\s+(?P<name>.+)$", text)
+    if not match:
+        return None
+
+    raw_name = match.group("name").strip()
+    if raw_name.startswith('"') and raw_name.endswith('"'):
+        raw_name = raw_name[1:-1].replace(r'\"', '"').replace(r"\\", "\\")
+
+    return {
+        "name": raw_name,
+        "flags": [flag.lower() for flag in match.group("flags").split()],
+    }
+
+
+def list_mailboxes(client) -> list[dict]:
+    status, rows = client.list()
+    if status != "OK":
+        return []
+    mailboxes = []
+    for row in rows or []:
+        parsed = parse_mailbox_list_row(row)
+        if parsed and parsed.get("name"):
+            mailboxes.append(parsed)
+    return mailboxes
+
+
+def find_destination_mailbox(client, action: str):
+    mailboxes = list_mailboxes(client)
+    special_flag = r"\archive" if action == "archive" else r"\trash"
+    for mailbox in mailboxes:
+        if special_flag in mailbox["flags"]:
+            return mailbox["name"]
+
+    common_names = {
+        "archive": [
+            "Archive",
+            "Archives",
+            "INBOX.Archive",
+            "[Gmail]/All Mail",
+            "[Google Mail]/All Mail",
+            "All Mail",
+        ],
+        "delete": [
+            "Trash",
+            "Deleted Messages",
+            "Deleted Items",
+            "INBOX.Trash",
+            "[Gmail]/Trash",
+            "[Google Mail]/Trash",
+        ],
+    }[action]
+    by_lower_name = {mailbox["name"].lower(): mailbox["name"] for mailbox in mailboxes}
+    for name in common_names:
+        match = by_lower_name.get(name.lower())
+        if match:
+            return match
+    return None
+
+
+def quote_mailbox(client, mailbox_name: str) -> str:
+    quote = getattr(client, "_quote", None)
+    if quote:
+        return quote(mailbox_name)
+    escaped = mailbox_name.replace("\\", "\\\\").replace('"', r'\"')
+    return f'"{escaped}"'
+
+
+def move_uids_to_mailbox(client, uid_set: str, destination: str) -> bool:
+    quoted_destination = quote_mailbox(client, destination)
+    status, _ = client.uid("MOVE", uid_set, quoted_destination)
+    if status == "OK":
+        return True
+
+    status, _ = client.uid("COPY", uid_set, quoted_destination)
+    if status != "OK":
+        return False
+
+    status, _ = client.uid("STORE", uid_set, "+FLAGS.SILENT", r"(\Deleted)")
+    if status != "OK":
+        return False
+    client.expunge()
+    return True
+
+
+def mutate_messages(payload: dict) -> dict:
+    account = payload["account"]
+    password = payload["password"]
+    action = payload.get("action")
+    if action not in ("archive", "delete"):
+        fail("Unsupported mailbox mutation action.")
+
+    uids = sorted({int(uid) for uid in payload.get("uids", []) if int(uid) > 0})
+    if not uids:
+        fail("No message UIDs were provided.")
+
+    client = connect_imap(account, password)
+    destination = None
+    expunged = False
+    try:
+        status, _ = client.select("INBOX")
+        if status != "OK":
+            fail("Could not open INBOX.")
+
+        uid_set = ",".join(str(uid) for uid in uids)
+        destination = find_destination_mailbox(client, action)
+
+        if destination:
+            if not move_uids_to_mailbox(client, uid_set, destination):
+                fail(f"Could not move message(s) to {destination}.")
+        elif action == "delete":
+            status, _ = client.uid("STORE", uid_set, "+FLAGS.SILENT", r"(\Deleted)")
+            if status != "OK":
+                fail("Could not mark message(s) as deleted.")
+            client.expunge()
+            expunged = True
+        else:
+            fail("Could not find an Archive mailbox for this account.")
+
+        return {
+            "action": action,
+            "requested_count": len(uids),
+            "affected_uids": uids,
+            "destination_mailbox": destination,
+            "expunged": expunged,
+        }
+    finally:
+        try:
+            client.logout()
+        except Exception:
+            pass
+
+
 def send_message(payload: dict) -> dict:
     account = payload["account"]
     password = payload["password"]
@@ -538,6 +714,8 @@ def main():
             result = fetch_messages(payload)
         elif command == "history":
             result = fetch_history(payload)
+        elif command == "mutate":
+            result = mutate_messages(payload)
         elif command == "send":
             result = send_message(payload)
         elif command == "probe":

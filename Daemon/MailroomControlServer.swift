@@ -9,6 +9,7 @@ enum MailroomControlServerError: LocalizedError {
     case invalidToken
     case missingResolveApprovalParameters
     case missingResolveThreadDecisionParameters
+    case missingMutateMailboxMessagesParameters
     case missingUpsertMailboxAccountParameters
     case missingDeleteMailboxAccountParameters
     case missingUpsertSenderPolicyParameters
@@ -30,6 +31,8 @@ enum MailroomControlServerError: LocalizedError {
             return "The approval/resolve request is missing its parameters."
         case .missingResolveThreadDecisionParameters:
             return "The thread/resolve-decision request is missing its parameters."
+        case .missingMutateMailboxMessagesParameters:
+            return "The mailbox/messages mutate request is missing its parameters."
         case .missingUpsertMailboxAccountParameters:
             return "The mailbox-account upsert request is missing its parameters."
         case .missingDeleteMailboxAccountParameters:
@@ -51,6 +54,7 @@ final class MailroomControlServer: @unchecked Sendable {
         var readState: @Sendable () async throws -> MailroomDaemonStateSnapshot
         var resolveApproval: @Sendable (MailroomDaemonResolveApprovalParams) async throws -> MailroomDaemonStateSnapshot
         var resolveThreadDecision: @Sendable (MailroomDaemonResolveThreadDecisionParams) async throws -> MailroomDaemonStateSnapshot
+        var mutateMailboxMessages: @Sendable (MailroomDaemonMutateMailboxMessagesParams) async throws -> MailroomDaemonStateSnapshot
         var upsertMailboxAccount: @Sendable (MailroomDaemonUpsertMailboxAccountParams) async throws -> MailroomDaemonStateSnapshot
         var deleteMailboxAccount: @Sendable (MailroomDaemonDeleteMailboxAccountParams) async throws -> MailroomDaemonStateSnapshot
         var upsertSenderPolicy: @Sendable (MailroomDaemonUpsertSenderPolicyParams) async throws -> MailroomDaemonStateSnapshot
@@ -265,6 +269,12 @@ final class MailroomControlServer: @unchecked Sendable {
                 throw MailroomControlServerError.missingResolveThreadDecisionParameters
             }
             snapshot = try await handlers.resolveThreadDecision(params)
+
+        case .mutateMailboxMessages:
+            guard let params = request.mutateMailboxMessages else {
+                throw MailroomControlServerError.missingMutateMailboxMessagesParameters
+            }
+            snapshot = try await handlers.mutateMailboxMessages(params)
 
         case .upsertMailboxAccount:
             guard let params = request.upsertMailboxAccount else {

@@ -258,6 +258,7 @@ protocol MailboxMessageStore: Sendable {
     func save(mailboxMessage: MailroomMailboxMessageRecord) async throws
     func mailboxMessage(mailboxID: String, uid: UInt64) async throws -> MailroomMailboxMessageRecord?
     func recentMailboxMessages(limit: Int, mailboxID: String?) async throws -> [MailroomMailboxMessageRecord]
+    func deleteMailboxMessage(mailboxID: String, uid: UInt64) async throws
 }
 
 protocol MailboxPollIncidentStore: Sendable {

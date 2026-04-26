@@ -12,6 +12,7 @@ enum MailroomDaemonControlMethod: String, Codable, Hashable, Sendable {
     case readState = "state/read"
     case resolveApproval = "approval/resolve"
     case resolveThreadDecision = "thread/resolve-decision"
+    case mutateMailboxMessages = "mailbox/messages/mutate"
     case upsertMailboxAccount = "config/mailbox-account/upsert"
     case deleteMailboxAccount = "config/mailbox-account/delete"
     case upsertSenderPolicy = "config/sender-policy/upsert"
@@ -40,6 +41,11 @@ struct MailroomDaemonResolveThreadDecisionParams: Codable, Hashable, Sendable {
     var threadToken: String
     var decision: MailroomDaemonThreadDecision
     var task: String?
+}
+
+struct MailroomDaemonMutateMailboxMessagesParams: Codable, Hashable, Sendable {
+    var action: MailroomMailboxRemoteAction
+    var targets: [MailroomMailboxMessageTarget]
 }
 
 struct MailroomDaemonMailboxAccountSummary: Codable, Hashable, Sendable {
@@ -99,6 +105,7 @@ struct MailroomDaemonControlRequest: Codable, Hashable, Sendable {
     var stateRead: MailroomDaemonStateReadParams?
     var resolveApproval: MailroomDaemonResolveApprovalParams?
     var resolveThreadDecision: MailroomDaemonResolveThreadDecisionParams?
+    var mutateMailboxMessages: MailroomDaemonMutateMailboxMessagesParams? = nil
     var upsertMailboxAccount: MailroomDaemonUpsertMailboxAccountParams?
     var deleteMailboxAccount: MailroomDaemonDeleteMailboxAccountParams?
     var upsertSenderPolicy: MailroomDaemonUpsertSenderPolicyParams?

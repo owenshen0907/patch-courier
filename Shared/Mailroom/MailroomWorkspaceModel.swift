@@ -18,6 +18,7 @@ final class MailroomWorkspaceModel: ObservableObject {
     @Published private(set) var daemonRuntimeStatus: MailroomDaemonRuntimeStatus = .placeholder
     @Published private(set) var resolvingApprovalIDs: Set<String> = []
     @Published private(set) var resolvingThreadDecisionTokens: Set<String> = []
+    @Published private(set) var mutatingMailboxMessageIDs: Set<String> = []
     @Published private(set) var applicationSupportPath: String = ""
     @Published private(set) var accountsFilePath: String = ""
     @Published private(set) var policyFilePath: String = ""
@@ -823,6 +824,62 @@ final class MailroomWorkspaceModel: ObservableObject {
 
     func isResolvingThreadDecision(_ threadToken: String) -> Bool {
         resolvingThreadDecisionTokens.contains(threadToken)
+    }
+
+    func mutateMailboxMessages(
+        targets: [MailroomMailboxMessageTarget],
+        action: MailroomMailboxRemoteAction
+    ) async {
+        let normalizedTargets = Array(Set(targets)).filter { !$0.mailboxID.isEmpty && $0.uid > 0 }
+        guard !normalizedTargets.isEmpty else {
+            errorMessage = LT(
+                "Choose at least one mailbox message first.",
+                "请先选择至少一封邮箱邮件。",
+                "まず少なくとも 1 件のメールを選択してください。"
+            )
+            return
+        }
+
+        let targetIDs = Set(normalizedTargets.map(\.id))
+        guard mutatingMailboxMessageIDs.isDisjoint(with: targetIDs) else {
+            return
+        }
+
+        mutatingMailboxMessageIDs.formUnion(targetIDs)
+        errorMessage = nil
+
+        do {
+            let client = try await makeDaemonClient(autoStartIfNeeded: true)
+            let snapshot = try await client.mutateMailboxMessages(
+                targets: normalizedTargets,
+                action: action
+            )
+            applyDaemonState(controlFile: client.controlFile, snapshot: snapshot)
+            statusMessage = {
+                switch action {
+                case .archive:
+                    return LT(
+                        "Archived \(normalizedTargets.count) relay mailbox message(s).",
+                        "已归档 \(normalizedTargets.count) 封信使邮箱邮件。",
+                        "\(normalizedTargets.count) 件の中継メールをアーカイブした。"
+                    )
+                case .delete:
+                    return LT(
+                        "Deleted \(normalizedTargets.count) relay mailbox message(s).",
+                        "已删除 \(normalizedTargets.count) 封信使邮箱邮件。",
+                        "\(normalizedTargets.count) 件の中継メールを削除した。"
+                    )
+                }
+            }()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        mutatingMailboxMessageIDs.subtract(targetIDs)
+    }
+
+    func isMutatingMailboxMessages(targets: [MailroomMailboxMessageTarget]) -> Bool {
+        !Set(targets.map(\.id)).isDisjoint(with: mutatingMailboxMessageIDs)
     }
 
     private var daemonControlFile: MailroomDaemonControlFile? {

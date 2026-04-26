@@ -197,6 +197,9 @@ struct DashboardView: View {
               let message = workspaceModel.errorMessage.trimmedNonEmpty else {
             return
         }
+        guard !MailDeskDisplayNoise.containsOperationalNoise(in: [message]) else {
+            return
+        }
         activeAlert = OperatorFeedbackAlert(
             title: LT("Needs attention", "需要注意", "要対応"),
             message: message
@@ -1572,11 +1575,16 @@ private struct MailDeskSection: View {
     @Binding var selectedItemID: String?
     let onOpenSettings: (OperatorSettingsPane) -> Void
 
+    private var visibleThreads: [MailroomDaemonThreadSummary] {
+        workspaceModel.daemonThreads.filter { !$0.isDisplayNoise }
+    }
+
     private var feedItems: [MailDeskFeedItem] {
         MailDeskFeedItem.build(
             messages: workspaceModel.mailboxMessages,
-            threads: workspaceModel.daemonThreads
+            threads: visibleThreads
         )
+        .filter { !$0.isDisplayNoise }
     }
 
     private var whitelistAddresses: Set<String> {
@@ -1647,7 +1655,9 @@ private struct MailDeskSection: View {
     }
 
     private func latestMailboxIncident(accountID: String) -> MailroomMailboxPollIncidentRecord? {
-        workspaceModel.daemonMailboxPollIncidents.first(where: { $0.mailboxID == accountID })
+        workspaceModel.daemonMailboxPollIncidents.first {
+            $0.mailboxID == accountID && !$0.isDisplayNoise
+        }
     }
 
     private var activeWorkers: [MailroomDaemonWorkerSummary] {
@@ -1667,7 +1677,7 @@ private struct MailDeskSection: View {
             .filter { turn in
                 switch turn.status {
                 case "active", "waitingOnApproval", "waitingOnUserInput":
-                    return true
+                    return !turn.isDisplayNoise
                 default:
                     return false
                 }
@@ -1695,6 +1705,7 @@ private struct MailDeskSection: View {
                 item: effectiveSelectedItem,
                 setupReadiness: setupReadiness,
                 isResolvingThreadDecision: effectiveSelectedItem?.threadToken.map(workspaceModel.isResolvingThreadDecision) ?? false,
+                isMutatingMailboxMessages: effectiveSelectedItem.map { workspaceModel.isMutatingMailboxMessages(targets: $0.mailboxMutationTargets) } ?? false,
                 onOpenSettings: onOpenSettings,
                 onResolveThreadDecision: { decision in
                     guard let threadToken = effectiveSelectedItem?.threadToken else {
@@ -1706,13 +1717,24 @@ private struct MailDeskSection: View {
                             decision: decision
                         )
                     }
+                },
+                onMutateMailboxMessages: { action in
+                    guard let targets = effectiveSelectedItem?.mailboxMutationTargets else {
+                        return
+                    }
+                    Task {
+                        await workspaceModel.mutateMailboxMessages(
+                            targets: targets,
+                            action: action
+                        )
+                    }
                 }
             )
                 .frame(minWidth: 440, idealWidth: 620, maxWidth: .infinity)
                 .frame(maxHeight: .infinity)
             MailDeskTaskSidebar(
                 selectedItem: effectiveSelectedItem,
-                threads: workspaceModel.daemonThreads,
+                threads: visibleThreads,
                 workers: activeWorkers,
                 approvals: workspaceModel.pendingApprovals,
                 liveTurns: liveTurns,
@@ -3047,8 +3069,12 @@ private struct MailDeskPreview: View {
     let item: MailDeskFeedItem?
     let setupReadiness: MailroomSetupReadiness
     let isResolvingThreadDecision: Bool
+    let isMutatingMailboxMessages: Bool
     let onOpenSettings: (OperatorSettingsPane) -> Void
     let onResolveThreadDecision: (MailroomDaemonThreadDecision) -> Void
+    let onMutateMailboxMessages: (MailroomMailboxRemoteAction) -> Void
+
+    @State private var isConfirmingMailboxDelete = false
 
     var body: some View {
         Group {
@@ -3096,6 +3122,28 @@ private struct MailDeskPreview: View {
                                     )
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                }
+                                if item.canMutateMailboxMessages {
+                                    HStack(spacing: 8) {
+                                        Button {
+                                            onMutateMailboxMessages(.archive)
+                                        } label: {
+                                            Text(LT("Archive", "归档", "アーカイブ"))
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .disabled(isMutatingMailboxMessages)
+
+                                        Button(role: .destructive) {
+                                            isConfirmingMailboxDelete = true
+                                        } label: {
+                                            Text(LT("Delete", "删除", "削除"))
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .controlSize(.small)
+                                        .disabled(isMutatingMailboxMessages)
+                                    }
+                                    .padding(.top, 4)
                                 }
                             }
                         }
@@ -3163,6 +3211,24 @@ private struct MailDeskPreview: View {
                 .padding(.horizontal, 22)
                 .padding(.vertical, 20)
             }
+        }
+        .confirmationDialog(
+            LT("Delete relay mailbox message?", "删除信使邮箱邮件？", "中継メールを削除しますか？"),
+            isPresented: $isConfirmingMailboxDelete,
+            titleVisibility: .visible
+        ) {
+            Button(LT("Delete from mailbox", "从邮箱删除", "メールボックスから削除"), role: .destructive) {
+                onMutateMailboxMessages(.delete)
+            }
+            Button(LT("Cancel", "取消", "キャンセル"), role: .cancel) {}
+        } message: {
+            Text(
+                LT(
+                    "Patch Courier will move the selected message(s) to Trash when possible, or permanently expunge them on servers without a Trash mailbox.",
+                    "Patch Courier 会尽量把选中的邮件移动到废纸篓；如果服务器没有废纸篓，则会直接永久删除。",
+                    "Patch Courier は選択したメールを可能ならゴミ箱へ移動し、ゴミ箱がないサーバーでは完全に削除します。"
+                )
+            )
         }
     }
 }
@@ -3536,6 +3602,7 @@ private struct MailDeskFeedItem: Identifiable, Hashable {
     var threadStatus: String?
     var threadPendingStage: String?
     var threadCapability: String?
+    var mailboxMutationTargets: [MailroomMailboxMessageTarget] = []
     var groupedMessageCount: Int = 1
     var conversationEntries: [MailDeskConversationEntry] = []
 
@@ -3605,6 +3672,10 @@ private struct MailDeskFeedItem: Identifiable, Hashable {
 
     var hasDaemonNote: Bool {
         note?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    var canMutateMailboxMessages: Bool {
+        !mailboxMutationTargets.isEmpty
     }
 
     var actionLabel: String? {
@@ -3744,45 +3815,49 @@ private struct MailDeskFeedItem: Identifiable, Hashable {
             let normalizedThreadToken = normalizedThreadToken(message.threadToken)
             let matchedThread = normalizedThreadToken.flatMap { threadsByID[$0] }
             let conversationEntries = buildConversationEntries(from: groupedMessages)
+            let mailboxMutationTargets = groupedMessages.map {
+                MailroomMailboxMessageTarget(mailboxID: $0.mailboxID, uid: $0.uid)
+            }
 
-                let mailboxFields: [String?] = [message.mailboxLabel, message.mailboxEmailAddress]
-                let mailboxSummaryParts = mailboxFields.compactMap { value -> String? in
-                    guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-                          !trimmed.isEmpty else {
-                        return nil
-                    }
-                    return trimmed
+            let mailboxFields: [String?] = [message.mailboxLabel, message.mailboxEmailAddress]
+            let mailboxSummaryParts = mailboxFields.compactMap { value -> String? in
+                guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !trimmed.isEmpty else {
+                    return nil
                 }
-                let mailboxSummary = mailboxSummaryParts.isEmpty ? nil : mailboxSummaryParts.joined(separator: " · ")
+                return trimmed
+            }
+            let mailboxSummary = mailboxSummaryParts.isEmpty ? nil : mailboxSummaryParts.joined(separator: " · ")
             return MailDeskFeedItem(
-                    id: normalizedThreadToken.map { "thread:\($0)" } ?? message.id,
-                    messageID: message.messageID,
-                    uid: message.uid,
-                    sender: message.fromAddress,
-                    subject: matchedThread?.subject ?? message.subject,
-                    body: message.plainBody,
-                    receivedAt: message.receivedAt,
-                    processedAt: message.processedAt,
-                    mailboxSummary: mailboxSummary,
-                    action: message.action.rawValue,
-                    note: message.note,
-                    threadToken: normalizedThreadToken,
-                    threadStatus: matchedThread?.status,
-                    threadPendingStage: matchedThread?.pendingStage,
-                    threadCapability: matchedThread?.capability,
-                    groupedMessageCount: groupedMessages.count,
-                    conversationEntries: conversationEntries
-                )
+                id: normalizedThreadToken.map { "thread:\($0)" } ?? message.id,
+                messageID: message.messageID,
+                uid: message.uid,
+                sender: message.fromAddress,
+                subject: matchedThread?.subject ?? message.subject,
+                body: message.plainBody,
+                receivedAt: message.receivedAt,
+                processedAt: message.processedAt,
+                mailboxSummary: mailboxSummary,
+                action: message.action.rawValue,
+                note: message.note,
+                threadToken: normalizedThreadToken,
+                threadStatus: matchedThread?.status,
+                threadPendingStage: matchedThread?.pendingStage,
+                threadCapability: matchedThread?.capability,
+                mailboxMutationTargets: mailboxMutationTargets,
+                groupedMessageCount: groupedMessages.count,
+                conversationEntries: conversationEntries
+            )
+        }
+        .sorted { lhs, rhs in
+            if lhs.listPriority != rhs.listPriority {
+                return lhs.listPriority > rhs.listPriority
             }
-            .sorted { lhs, rhs in
-                if lhs.listPriority != rhs.listPriority {
-                    return lhs.listPriority > rhs.listPriority
-                }
-                if lhs.receivedAt != rhs.receivedAt {
-                    return lhs.receivedAt > rhs.receivedAt
-                }
-                return (lhs.processedAt ?? .distantPast) > (rhs.processedAt ?? .distantPast)
+            if lhs.receivedAt != rhs.receivedAt {
+                return lhs.receivedAt > rhs.receivedAt
             }
+            return (lhs.processedAt ?? .distantPast) > (rhs.processedAt ?? .distantPast)
+        }
     }
 
     private static func normalizedThreadToken(_ value: String?) -> String? {
@@ -4314,6 +4389,9 @@ private struct SettingsSheetView: View {
             guard let message = workspaceModel.errorMessage.trimmedNonEmpty else {
                 return
             }
+            guard !MailDeskDisplayNoise.containsOperationalNoise(in: [message]) else {
+                return
+            }
             activeAlert = OperatorFeedbackAlert(
                 title: LT("Needs attention", "需要注意", "要対応"),
                 message: message
@@ -4444,7 +4522,9 @@ private struct RuntimeSettingsPane: View {
     }
 
     private func latestMailboxIncident(accountID: String) -> MailroomMailboxPollIncidentRecord? {
-        workspaceModel.daemonMailboxPollIncidents.first(where: { $0.mailboxID == accountID })
+        workspaceModel.daemonMailboxPollIncidents.first {
+            $0.mailboxID == accountID && !$0.isDisplayNoise
+        }
     }
 
     private func refreshRuntime() {
@@ -5056,6 +5136,130 @@ private struct SelectableBodyText: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.black.opacity(0.03))
             )
+    }
+}
+
+private enum MailDeskDisplayNoise {
+    static func isRoutineMailboxOnlyAction(_ action: String?) -> Bool {
+        switch action?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "historical", "ignored":
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func containsOperationalNoise(in chunks: [String?]) -> Bool {
+        let text = chunks
+            .compactMap { $0?.mailDeskNoiseText }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+
+        guard !text.isEmpty else {
+            return false
+        }
+
+        if text.contains("data couldn't be read") && text.contains("correct format") {
+            return true
+        }
+
+        return textMarkers.contains { text.contains($0) }
+    }
+
+    private static let textMarkers: [String] = [
+        "the data couldn't be read because it isn't in the correct format",
+        "oil price",
+        "fuel price",
+        "gas price",
+        "油价",
+        "油價",
+        "汽油价格",
+        "汽油價格",
+        "油价提示",
+        "油價提示",
+        "patch courier execute smoke test",
+        "patch courier status smoke",
+        "patch courier smoke test",
+        "mailroom selftest",
+        "mailroom history check",
+        "exec-smoke-",
+        "smoke-202",
+        "smoke test",
+        "self test for receive loop",
+        "请忽略，这是一封用于验证最近邮件动态和历史同步的测试邮件"
+    ]
+}
+
+private extension MailDeskFeedItem {
+    var isDisplayNoise: Bool {
+        if MailDeskDisplayNoise.isRoutineMailboxOnlyAction(action) {
+            return true
+        }
+
+        return MailDeskDisplayNoise.containsOperationalNoise(
+            in: [
+                sender,
+                subject,
+                body,
+                note,
+                mailboxSummary,
+                threadToken,
+                messageID
+            ]
+        )
+    }
+}
+
+private extension MailroomDaemonThreadSummary {
+    var isDisplayNoise: Bool {
+        MailDeskDisplayNoise.containsOperationalNoise(
+            in: [
+                subject,
+                normalizedSender,
+                id,
+                lastInboundMessageID,
+                lastOutboundMessageID
+            ]
+        )
+    }
+}
+
+private extension MailroomDaemonTurnSummary {
+    var isDisplayNoise: Bool {
+        MailDeskDisplayNoise.containsOperationalNoise(
+            in: [
+                promptPreview,
+                mailThreadToken,
+                codexThreadID,
+                lastNotificationMessageID
+            ]
+        )
+    }
+}
+
+private extension MailroomMailboxPollIncidentRecord {
+    var isDisplayNoise: Bool {
+        if resolvedAt != nil {
+            return true
+        }
+
+        return MailDeskDisplayNoise.containsOperationalNoise(
+            in: [
+                message,
+                phase,
+                mailboxLabel,
+                mailboxEmailAddress
+            ]
+        )
+    }
+}
+
+private extension String {
+    var mailDeskNoiseText: String {
+        replacingOccurrences(of: "’", with: "'")
+            .replacingOccurrences(of: "‘", with: "'")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+            .lowercased()
     }
 }
 

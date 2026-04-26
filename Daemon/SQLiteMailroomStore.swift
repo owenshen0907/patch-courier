@@ -656,6 +656,24 @@ extension SQLiteMailroomStore: MailboxMessageStore {
             return rows
         }
     }
+
+    func deleteMailboxMessage(mailboxID: String, uid: UInt64) async throws {
+        try withDatabase { database in
+            let sql = """
+            DELETE FROM mail_messages
+            WHERE id = ?;
+            """
+
+            let statement = try prepare(sql, in: database)
+            defer { sqlite3_finalize(statement) }
+
+            bind(MailroomMailboxMessageRecord.makeID(mailboxID: mailboxID, uid: uid), at: 1, in: statement)
+
+            guard sqlite3_step(statement) == SQLITE_DONE else {
+                throw SQLiteMailroomStoreError.statementFailed(message(from: database))
+            }
+        }
+    }
 }
 
 extension SQLiteMailroomStore: MailboxPollIncidentStore {

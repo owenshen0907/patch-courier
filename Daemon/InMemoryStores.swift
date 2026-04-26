@@ -95,6 +95,10 @@ actor InMemoryMailboxMessageStore: MailboxMessageStore {
             }
         return Array(filtered.prefix(max(limit, 0)))
     }
+
+    func deleteMailboxMessage(mailboxID: String, uid: UInt64) async throws {
+        messagesByID.removeValue(forKey: MailroomMailboxMessageRecord.makeID(mailboxID: mailboxID, uid: uid))
+    }
 }
 
 actor InMemoryMailboxPollIncidentStore: MailboxPollIncidentStore {

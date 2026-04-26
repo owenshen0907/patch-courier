@@ -110,6 +110,31 @@ struct MailroomDaemonClient {
         return try await send(request)
     }
 
+    func mutateMailboxMessages(
+        targets: [MailroomMailboxMessageTarget],
+        action: MailroomMailboxRemoteAction
+    ) async throws -> MailroomDaemonStateSnapshot {
+        let request = MailroomDaemonControlRequest(
+            id: UUID().uuidString,
+            token: controlFile.authToken,
+            method: .mutateMailboxMessages,
+            stateRead: nil,
+            resolveApproval: nil,
+            resolveThreadDecision: nil,
+            mutateMailboxMessages: MailroomDaemonMutateMailboxMessagesParams(
+                action: action,
+                targets: targets
+            ),
+            upsertMailboxAccount: nil,
+            deleteMailboxAccount: nil,
+            upsertSenderPolicy: nil,
+            deleteSenderPolicy: nil,
+            upsertManagedProject: nil,
+            deleteManagedProject: nil
+        )
+        return try await send(request)
+    }
+
     func upsertMailboxAccount(_ account: MailboxAccount, password: String?) async throws -> MailroomDaemonStateSnapshot {
         let request = MailroomDaemonControlRequest(
             id: UUID().uuidString,

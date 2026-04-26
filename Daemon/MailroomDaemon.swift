@@ -102,6 +102,9 @@ enum MailroomDaemonError: LocalizedError {
     case approvalAnswersMissing(String)
     case invalidDecision(String, allowed: [String])
     case unsupportedApprovalKind(MailroomApprovalKind)
+    case missingMailboxMessageTargets
+    case mailboxAccountNotFound(String)
+    case mailboxPasswordMissing(String)
 
     var errorDescription: String? {
         switch self {
@@ -123,6 +126,12 @@ enum MailroomDaemonError: LocalizedError {
             return "Decision '\(decision)' is invalid. Allowed values: \(allowed.joined(separator: ", "))."
         case .unsupportedApprovalKind(let kind):
             return "Approval kind '\(kind.rawValue)' is not wired yet."
+        case .missingMailboxMessageTargets:
+            return "Choose at least one mailbox message to archive or delete."
+        case .mailboxAccountNotFound(let accountID):
+            return "No relay mailbox account exists for id \(accountID)."
+        case .mailboxPasswordMissing(let accountID):
+            return "The relay mailbox password is missing for account \(accountID)."
         }
     }
 }
@@ -365,6 +374,9 @@ actor MailroomDaemon {
                 },
                 resolveThreadDecision: { [self] params in
                     try await resolveThreadDecisionControl(params)
+                },
+                mutateMailboxMessages: { [self] params in
+                    try await mutateMailboxMessagesControl(params)
                 },
                 upsertMailboxAccount: { [self] params in
                     try await upsertMailboxAccountControl(params)
@@ -911,6 +923,41 @@ actor MailroomDaemon {
             answers: params.answers,
             note: params.note
         ))
+        return try await makeControlSnapshot()
+    }
+
+    func mutateMailboxMessagesControl(_ params: MailroomDaemonMutateMailboxMessagesParams) async throws -> MailroomDaemonStateSnapshot {
+        let targets = Array(Set(params.targets)).filter { !$0.mailboxID.isEmpty && $0.uid > 0 }
+        guard !targets.isEmpty else {
+            throw MailroomDaemonError.missingMailboxMessageTargets
+        }
+
+        let accountsByID = Dictionary(uniqueKeysWithValues: try await accountStore.allMailboxAccounts().map { ($0.id, $0) })
+        let targetsByMailbox = Dictionary(grouping: targets, by: \.mailboxID)
+
+        for (mailboxID, mailboxTargets) in targetsByMailbox {
+            guard let account = accountsByID[mailboxID] else {
+                throw MailroomDaemonError.mailboxAccountNotFound(mailboxID)
+            }
+            guard let password = try secretStore.password(for: mailboxID)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !password.isEmpty else {
+                throw MailroomDaemonError.mailboxPasswordMissing(mailboxID)
+            }
+
+            let uids = mailboxTargets.map(\.uid).sorted()
+            _ = try await mutateMailboxMessagesViaTransport(
+                account: account,
+                password: password,
+                uids: uids,
+                action: params.action
+            )
+
+            for uid in uids {
+                try await mailboxMessageStore.deleteMailboxMessage(mailboxID: mailboxID, uid: uid)
+            }
+        }
+
         return try await makeControlSnapshot()
     }
 

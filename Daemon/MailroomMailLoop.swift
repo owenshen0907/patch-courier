@@ -2690,6 +2690,18 @@ extension MailroomDaemon {
         }.value
     }
 
+    func mutateMailboxMessagesViaTransport(
+        account: MailboxAccount,
+        password: String,
+        uids: [UInt64],
+        action: MailroomMailboxRemoteAction
+    ) async throws -> MailMessageMutationResult {
+        let client = transportClient
+        return try await Task.detached(priority: .utility) {
+            try client.mutateMessages(account: account, password: password, uids: uids, action: action)
+        }.value
+    }
+
     private func sendMessageViaTransport(
         account: MailboxAccount,
         password: String,
